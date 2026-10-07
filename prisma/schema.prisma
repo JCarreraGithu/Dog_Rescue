@@ -1,0 +1,102 @@
+   datasource db {
+     provider  = "postgresql"
+     url       = env("DATABASE_URL")
+     directUrl = env("DIRECT_URL")
+   }
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Dog {
+  id               String                @id @default(uuid())
+  name             String
+  breed            String                @default("Mestizo")
+  ageCategory      String                // Cachorro, Adulto, Senior
+  ageYears         Float                 @default(1.0)
+  gender           String                // Macho, Hembra
+  size             String                // Pequeño, Mediano, Grande
+  temperament      String                // Sociable, Tranquilo, Activo, Protector
+  status           String                @default("En Adopción") // En Adopción, En Tratamiento, Adoptado, En Cuarentena
+  rescueHistory    String
+  healthNotes      String
+  photoUrl         String
+  isSterilized     Boolean               @default(false)
+  rescueDate       DateTime              @default(now())
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  medicalRecords   MedicalRecord[]
+  applications     AdoptionApplication[]
+}
+
+model MedicalRecord {
+  id          String    @id @default(uuid())
+  dogId       String
+  dog         Dog       @relation(fields: [dogId], references: [id], onDelete: Cascade)
+  type        String    // Vacuna, Desparasitación, Esterilización, Consulta, Tratamiento
+  title       String
+  description String
+  date        DateTime
+  vetName     String    @default("Dr. Veterinario Amatitlán")
+  nextDueDate DateTime?
+  status      String    @default("Completado") // Completado, Pendiente, Programado
+  createdAt   DateTime  @default(now())
+}
+
+model AdoptionApplication {
+  id             String   @id @default(uuid())
+  dogId          String?
+  dog            Dog?     @relation(fields: [dogId], references: [id], onDelete: SetNull)
+  applicantName  String
+  applicantEmail String
+  applicantPhone String
+  applicantAddress String
+  homeType       String   // Casa, Departamento
+  hasYard        Boolean  @default(true)
+  hasOtherPets   Boolean  @default(false)
+  status         String   @default("Pendiente") // Pendiente, En Evaluación, Aprobado, Rechazado
+  evaluatorNotes String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model InventoryItem {
+  id           String   @id @default(uuid())
+  category     String   // Concentrado, Medicamento, Insumo de Limpieza
+  name         String
+  quantity     Float
+  unit         String   // kg, costales, unidades, frascos, cajas
+  minThreshold Float    @default(5)
+  lastUpdated  DateTime @updatedAt
+}
+
+model Volunteer {
+  id           String   @id @default(uuid())
+  name         String
+  email        String
+  phone        String
+  saturdayDate String   // YYYY-MM-DD
+  assignedTask String   @default("Cuidado General") // Paseo, Limpieza, Baño, Medicina, Logística
+  status       String   @default("Confirmado") // Confirmado, Asistió, Ausente
+  createdAt    DateTime @default(now())
+}
+
+model CaseReport {
+  id              String   @id @default(uuid())
+  reporterName    String
+  reporterPhone   String
+  locationAddress String   // Amatitlán, Guatemala
+  description     String
+  photoUrl        String?
+  urgencyLevel    String   @default("Media") // Alta, Media, Baja
+  status          String   @default("Recibido") // Recibido, En Revisión, Rescatado, Descartado
+  createdAt       DateTime @default(now())
+}
+
+model TransparencyStat {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Int
+  label     String
+  updatedAt DateTime @updatedAt
+}
