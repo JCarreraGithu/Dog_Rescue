@@ -78,7 +78,7 @@ export default function ConocenosPage() {
           <span className="text-xs font-bold text-sky-600 tracking-wider uppercase">Quiénes somos</span>
           <h2 className="text-3xl font-extrabold text-slate-900 mt-1">La familia detrás del refugio</h2>
           <p className="text-sm text-slate-600 max-w-xl mx-auto mt-1">
-            El refugio lo dirige una señora junto a sus dos hijos. Todo lo hacen en familia.
+            El refugio lo dirige una ciudadana junto a sus dos hijos.
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
