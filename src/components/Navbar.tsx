@@ -1,5 +1,5 @@
 "use client";
-
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,7 @@ const LINKS = [
   { href: "/", label: "Inicio", icon: null, color: "" },
   { href: "/catalogo", label: "Adopciones", icon: Dog, color: "text-amber-500" },
   { href: "/conocenos", label: "Conócenos", icon: Users, color: "text-sky-500" },
-  { href: "/tienda", label: "Ayúdanos comprando", icon: ShoppingBag, color: "text-sky-500" },
+  { href: "/apoyanos", label: "Apóyanos", icon: Heart, color: "text-rose-500" },
   { href: "/#transparencia", label: "Transparencia", icon: Shield, color: "text-sky-500" },
   { href: "/#voluntariado", label: "Voluntariado", icon: Calendar, color: "text-blue-500" },
   { href: "/#reportar-caso", label: "Reportar Caso", icon: AlertTriangle, color: "text-rose-500" },
@@ -55,18 +55,35 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group shrink-0">
-            <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-md group-hover:bg-emerald-700 transition">
-              <Dog className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="font-extrabold text-lg text-slate-800 tracking-tight block leading-none">
-                DOG Rescue <span className="text-emerald-600">Guatemala</span>
-              </span>
-              <span className="text-xs text-slate-500 font-medium">Refugio Amatitlán</span>
-            </div>
-          </Link>
+         
+{/* Logo oficial y nombre del refugio */}
+<Link
+  href="/"
+  className="flex items-center gap-3 group shrink-0"
+  aria-label="DOG Rescue Guatemala - Ir al inicio"
+>
+  <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+    <Image
+      src="/logo-refugio.jpg"
+      alt="Logo oficial DOG Rescue Guatemala"
+      width={48}
+      height={48}
+      priority
+      className="w-12 h-12 object-contain"
+    />
+  </div>
+
+  <div className="flex flex-col justify-center">
+    <span className="font-extrabold text-lg text-slate-800 tracking-tight whitespace-nowrap leading-tight">
+      DOG Rescue{" "}
+      <span className="text-sky-500">Guatemala</span>
+    </span>
+
+    <span className="text-xs text-slate-500 font-medium">
+      Refugio Amatitlán
+    </span>
+  </div>
+</Link>
 
           {/* Nav Links (escritorio) */}
           <nav className="hidden lg:flex items-center gap-5 text-sm font-medium text-slate-600">

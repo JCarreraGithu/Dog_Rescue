@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Dog, MapPin, Heart, Phone, Mail } from "lucide-react";
-
+import Image from "next/image";
 export default function Footer() {
   return (
     <footer className="bg-slate-900 text-slate-300 border-t border-slate-800">
@@ -8,17 +8,27 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Col 1 */}
           <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center">
-                <Dog className="w-6 h-6" />
-              </div>
-              <span className="font-extrabold text-lg text-white tracking-tight">
-                Refugio DOG Rescue <span className="text-emerald-400">Guatemala</span>
-              </span>
-            </div>
-            <p className="text-sm text-slate-400 leading-relaxed mb-4">
-              Iniciativa comunitaria e independiente dedicada al rescate, rehabilitación y fomento de la adopción responsable de perros en Amatitlán y Guatemala.
-            </p>
+            {/* Logo oficial del refugio */}
+<div className="flex items-center mb-4">
+  <Link href="/" aria-label="Ir al inicio">
+    <div className="bg-white rounded-xl p-2 inline-flex">
+      <Image
+        src="/logo-refugio.jpg"
+        alt="Logo oficial DOG Rescue Guatemala"
+        width={140}
+        height={140}
+        className="w-28 h-auto object-contain"
+      />
+    </div>
+  </Link>
+</div>
+           <p className="text-sm text-slate-400 leading-relaxed mb-4">
+  DOG Rescue Guatemala es un refugio independiente y sin fines
+  de lucro, dedicado al rescate, protección, rehabilitación y
+  bienestar de los animales. Trabajamos con amor y compromiso
+  para brindarles una segunda oportunidad y promover la
+  adopción responsable.
+</p>
           </div>
 
           {/* Col 2 */}

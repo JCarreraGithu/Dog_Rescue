@@ -1,5 +1,6 @@
 "use client";
 
+import RefugeMap from "@/components/RefugeMap";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ImpactCarousel from "@/components/ImpactCarousel";
@@ -126,7 +127,7 @@ export default function HomePage() {
             </h1>
 
             <p className="text-lg text-emerald-100/90 leading-relaxed max-w-2xl">
-              El Refugio DOG Rescue Guatemala está dedicado al rescate, rehabilitación y fomento de la adopción responsable de perros en situación de calle o maltrato en Amatitlán.
+              DOG Rescue Guatemala es un refugio dirigido de manera independiente y sin fines de lucro, centrado en el cuidado, bienestar y protección de los animales. Trabajamos por el rescate, rehabilitación y adopción responsable de perritos en Amatitlán.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
@@ -538,6 +539,7 @@ export default function HomePage() {
           )}
         </div>
       </section>
+      <RefugeMap />
     </div>
   );
 }
