@@ -8,16 +8,17 @@ generator client {
   provider = "prisma-client-js"
 }
 
+
 model Dog {
   id               String                @id @default(uuid())
   name             String
   breed            String                @default("Mestizo")
-  ageCategory      String                // Cachorro, Adulto, Senior
+  ageCategory      String
   ageYears         Float                 @default(1.0)
-  gender           String                // Macho, Hembra
-  size             String                // Pequeño, Mediano, Grande
-  temperament      String                // Sociable, Tranquilo, Activo, Protector
-  status           String                @default("En Adopción") // En Adopción, En Tratamiento, Adoptado, En Cuarentena
+  gender           String
+  size             String
+  temperament      String
+  status           String                @default("En Adopción")
   rescueHistory    String
   healthNotes      String
   photoUrl         String
@@ -25,9 +26,15 @@ model Dog {
   rescueDate       DateTime              @default(now())
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
+
+  // Eliminación lógica: conserva el expediente en Neon
+  isDeleted        Boolean               @default(false)
+  deletedAt        DateTime?
+
   medicalRecords   MedicalRecord[]
   applications     AdoptionApplication[]
 }
+
 
 model MedicalRecord {
   id          String    @id @default(uuid())
@@ -43,22 +50,41 @@ model MedicalRecord {
   createdAt   DateTime  @default(now())
 }
 
+
 model AdoptionApplication {
-  id             String   @id @default(uuid())
-  dogId          String?
-  dog            Dog?     @relation(fields: [dogId], references: [id], onDelete: SetNull)
-  applicantName  String
-  applicantEmail String
-  applicantPhone String
-  applicantAddress String
-  homeType       String   // Casa, Departamento
-  hasYard        Boolean  @default(true)
-  hasOtherPets   Boolean  @default(false)
-  status         String   @default("Pendiente") // Pendiente, En Evaluación, Aprobado, Rechazado
-  evaluatorNotes String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String    @id @default(uuid())
+  dogId           String?
+  dog             Dog?      @relation(fields: [dogId], references: [id], onDelete: SetNull)
+
+  // Información inicial del solicitante
+  applicantName   String
+  applicantAge    Int?
+  applicantPhone  String
+
+  // Condiciones de la vivienda
+  petsAllowed     Boolean?
+  safeHome        Boolean?
+  enoughSpace     Boolean?
+  petAccess       String?   // Todos, Algunos
+
+  // Bienestar animal
+  knowsFiveFreedoms   Boolean?
+  commitsToWelfare    Boolean?
+  commitsToSterilize  Boolean?
+
+  // Evaluación administrativa
+  status          String    @default("Pendiente")
+  evaluatorNotes  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+    // Campos antiguos: se conservan durante la migración
+  applicantEmail    String   @default("")
+  applicantAddress  String   @default("")
+  homeType          String   @default("Casa")
+  hasYard           Boolean  @default(false)
+  hasOtherPets      Boolean  @default(false)
 }
+
 
 model InventoryItem {
   id           String   @id @default(uuid())
@@ -70,16 +96,35 @@ model InventoryItem {
   lastUpdated  DateTime @updatedAt
 }
 
+
 model Volunteer {
   id           String   @id @default(uuid())
   name         String
-  email        String
+  email        String   @default("")
   phone        String
-  saturdayDate String   // YYYY-MM-DD
-  assignedTask String   @default("Cuidado General") // Paseo, Limpieza, Baño, Medicina, Logística
-  status       String   @default("Confirmado") // Confirmado, Asistió, Ausente
+
+  // Datos del formulario de postulación
+  age          Int?
+  municipality String?
+  availableDays String[] @default([])
+  commitmentDuration String?
+  interestAreas String[] @default([])
+  animalExperience String?
+  motivation   String?
+  acceptsSafetyRules Boolean?
+  authorizesDataUse  Boolean?
+
+  // Campos del sistema anterior: se conservan
+  saturdayDate String   @default("")
+  assignedTask String   @default("Cuidado General")
+
+  // En Evaluación, Aprobado, Rechazado
+  // Los registros anteriores conservan su estado Confirmado
+  status       String   @default("En Evaluación")
+  evaluatorNotes String?
   createdAt    DateTime @default(now())
 }
+
 
 model CaseReport {
   id              String   @id @default(uuid())

@@ -8,14 +8,12 @@ import {
   Dog,
   Heart,
   Shield,
-  Calendar,
   AlertTriangle,
   MapPin,
   CheckCircle2,
   Users,
   ChevronRight,
   Sparkles,
-  Phone,
   Send,
 } from "lucide-react";
 
@@ -25,15 +23,25 @@ export default function HomePage() {
   // Estados para perros destacados
   const [featuredDogs, setFeaturedDogs] = useState<any[]>([]);
   
-  // Estado para el formulario de voluntariado
-  const [volForm, setVolForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    saturdayDate: "2026-09-12",
-    assignedTask: "Paseo y Socialización",
-  });
+  // Solicitud pública de voluntariado
+  const initialVolForm = {
+    name: "", phone: "", age: "",
+    availableDays: [] as string[], commitmentDuration: "",
+    interestAreas: [] as string[], animalExperience: "", motivation: "",
+    acceptsSafetyRules: false, authorizesDataUse: false,
+  };
+  const [volForm, setVolForm] = useState(initialVolForm);
   const [volSubmitted, setVolSubmitted] = useState(false);
+  const [volLoading, setVolLoading] = useState(false);
+  const [volError, setVolError] = useState("");
+  const [showVolForm, setShowVolForm] = useState(false);
+  const availableDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+  const interestAreas = [
+    "Rescate y Logística en Campo", "Cuidados en Refugio",
+    "Venta de Paletas y Productos Solidarios", "Venta de Playeras y Merch Oficial",
+    "Redes Sociales y Difusión", "Casas Cuna / Hogar Temporal",
+  ];
+  const commitments = ["Fines de semana", "Al menos 3 meses", "6 meses o más"];
 
   // Estado para el formulario de reporte de casos
   const [caseForm, setCaseForm] = useState({
@@ -64,24 +72,24 @@ export default function HomePage() {
 
   const handleVolSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setVolError("");
+    setVolLoading(true);
     try {
       const res = await fetch("/api/volunteers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(volForm),
+        body: JSON.stringify({ ...volForm, age: Number(volForm.age) }),
       });
-      if (res.ok) {
-        setVolSubmitted(true);
-        setVolForm({
-          name: "",
-          email: "",
-          phone: "",
-          saturdayDate: "2026-09-12",
-          assignedTask: "Paseo y Socialización",
-        });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo enviar la solicitud.");
       }
+      setVolSubmitted(true);
+      setVolForm(initialVolForm);
     } catch (err) {
-      console.error(err);
+      setVolError(err instanceof Error ? err.message : "Error de conexión. Intenta nuevamente.");
+    } finally {
+      setVolLoading(false);
     }
   };
 
@@ -296,138 +304,94 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 4. VOLUNTARIADO SABATINO */}
+      {/* 4. SOLICITUD DE VOLUNTARIADO */}
       <section id="voluntariado" className="bg-slate-900 text-white py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
           <div className="lg:col-span-6 space-y-4">
             <div className="inline-flex items-center gap-2 bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold px-3 py-1 rounded-full">
-              <Calendar className="w-4 h-4" />
-              <span>Jornadas Sabatinas • Amatitlán</span>
+              <Users className="w-4 h-4" /> <span>Voluntariado • Amatitlán</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              Únete como Voluntario los Fines de Semana
-            </h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Forma parte de DOG Rescue Guatemala</h2>
             <p className="text-slate-300 text-sm leading-relaxed">
-              En las jornadas de los sábados realizamos actividades esenciales: paseo, baño, aplicación de medicina básica, desinfección de instalaciones y socialización. Tu tiempo salva vidas.
+              Puedes apoyar en el cuidado de los perritos, rescates, logística, actividades solidarias o difusión en redes sociales.
+              Envíanos tu postulación y el equipo del refugio evaluará tu solicitud.
             </p>
-
             <div className="space-y-3 pt-2 text-sm text-slate-300">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                <span>Horario: Sábados de 8:00 AM a 1:00 PM.</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                <span>Dirección: 9a calle 7-27, Amatitlán, Guatemala.</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                <span>Cupos limitados por jornada para garantizar organización.</span>
-              </div>
+              <div className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" /><span>Indica los días en los que puedes colaborar.</span></div>
+              <div className="flex items-start gap-3"><CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" /><span>El refugio se comunicará contigo después de evaluar tu perfil.</span></div>
+              <div className="flex items-start gap-3"><MapPin className="w-5 h-5 text-emerald-400 shrink-0" /><span>Amatitlán, Guatemala.</span></div>
             </div>
           </div>
 
-          {/* Formulario Voluntariado */}
-          <div className="lg:col-span-6">
-            <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100">
-              <h3 className="text-xl font-bold text-slate-800 mb-1 flex items-center gap-2">
-                <Users className="w-5 h-5 text-emerald-600" />
-                <span>Registro de Voluntarios</span>
-              </h3>
-              <p className="text-xs text-slate-500 mb-6">Selecciona la fecha e inscribe tu cupo.</p>
-
-              {volSubmitted ? (
-                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-6 rounded-2xl text-center space-y-2">
-                  <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-                  <h4 className="font-bold text-lg">¡Inscripción Confirmada!</h4>
-                  <p className="text-xs leading-relaxed">
-                    Te esperamos este sábado en el albergue de Amatitlán. Nos pondremos en contacto contigo para los detalles.
-                  </p>
-                  <button
-                    onClick={() => setVolSubmitted(false)}
-                    className="mt-4 text-xs font-bold text-emerald-700 underline"
-                  >
-                    Inscribir a otra persona
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleVolSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Nombre Completo</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ej. María Fernanda López"
-                      value={volForm.name}
-                      onChange={(e) => setVolForm({ ...volForm, name: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Correo Electrónico</label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="tu@correo.com"
-                        value={volForm.email}
-                        onChange={(e) => setVolForm({ ...volForm, email: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono / WhatsApp</label>
-                      <input
-                        type="tel"
-                        required
-                        placeholder="5555-1234"
-                        value={volForm.phone}
-                        onChange={(e) => setVolForm({ ...volForm, phone: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Fecha de Jornada</label>
-                      <select
-                        value={volForm.saturdayDate}
-                        onChange={(e) => setVolForm({ ...volForm, saturdayDate: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white"
-                      >
-                        <option value="2026-09-12">Sábado 12 de Septiembre</option>
-                        <option value="2026-09-19">Sábado 19 de Septiembre</option>
-                        <option value="2026-09-26">Sábado 26 de Septiembre</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Tarea Preferida</label>
-                      <select
-                        value={volForm.assignedTask}
-                        onChange={(e) => setVolForm({ ...volForm, assignedTask: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white"
-                      >
-                        <option value="Paseo y Socialización">Paseo y Socialización</option>
-                        <option value="Baño y Cepillado">Baño y Cepillado</option>
-                        <option value="Limpieza de Caniles">Limpieza de Caniles</option>
-                        <option value="Apoyo en Medicina">Apoyo en Medicina</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm mt-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>Confirmar Reservación de Cupo</span>
-                  </button>
-                </form>
-              )}
+          <div className="lg:col-span-6 bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Quiero ser voluntario</h3>
+            <p className="text-sm text-slate-600 mb-5">Elige cómo deseas comunicarte con nosotros.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+              <button type="button" onClick={() => { setShowVolForm(true); setVolSubmitted(false); }}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-3 text-sm">
+                Enviar solicitud en línea
+              </button>
+              <a href="https://www.facebook.com/people/DOG-rescue-Guatemala/100079476368990/"
+                target="_blank" rel="noopener noreferrer"
+                className="rounded-xl border border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100 font-semibold px-4 py-3 text-sm text-center">
+                Consultar por Facebook
+              </a>
             </div>
+
+            {volSubmitted ? (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-6 rounded-2xl text-center space-y-3">
+                <CheckCircle2 className="w-10 h-10 mx-auto" />
+                <h4 className="font-bold text-lg">¡Solicitud recibida!</h4>
+                <p className="text-sm">Tu postulación está En Evaluación. El refugio se comunicará contigo si necesitas continuar el proceso.</p>
+                <button type="button" onClick={() => { setVolSubmitted(false); setShowVolForm(false); }} className="text-sm font-semibold underline">Volver</button>
+              </div>
+            ) : showVolForm ? (
+              <form onSubmit={handleVolSubmit} className="space-y-4">
+                <div><label className="block text-xs font-bold text-slate-700 mb-1">Nombre completo *</label>
+                  <input required maxLength={120} value={volForm.name} onChange={(e) => setVolForm({ ...volForm, name: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm" /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-bold text-slate-700 mb-1">Edad (18+) *</label>
+                    <input required type="number" min={18} max={120} value={volForm.age} onChange={(e) => setVolForm({ ...volForm, age: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm" /></div>
+                  <div><label className="block text-xs font-bold text-slate-700 mb-1">Teléfono / WhatsApp *</label>
+                    <input required type="tel" maxLength={30} value={volForm.phone} onChange={(e) => setVolForm({ ...volForm, phone: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm" /></div>
+                </div>
+                <fieldset><legend className="text-xs font-bold text-slate-700 mb-2">Días disponibles * (elige al menos uno)</legend>
+                  <div className="grid grid-cols-2 gap-2">{availableDays.map((day) => (
+                    <label key={day} className="flex items-center gap-2 text-sm text-slate-700">
+                      <input type="checkbox" checked={volForm.availableDays.includes(day)} onChange={(e) => setVolForm({ ...volForm, availableDays: e.target.checked ? [...volForm.availableDays, day] : volForm.availableDays.filter((d) => d !== day) })} />{day}
+                    </label>
+                  ))}</div></fieldset>
+                <div><label className="block text-xs font-bold text-slate-700 mb-1">Compromiso de tiempo *</label>
+                  <select required value={volForm.commitmentDuration} onChange={(e) => setVolForm({ ...volForm, commitmentDuration: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-white">
+                    <option value="">Selecciona una opción</option>{commitments.map((value) => <option key={value} value={value}>{value}</option>)}
+                  </select></div>
+                <fieldset><legend className="text-xs font-bold text-slate-700 mb-2">Áreas en las que te gustaría apoyar *</legend>
+                  <div className="space-y-2">{interestAreas.map((area) => (
+                    <label key={area} className="flex items-start gap-2 text-sm text-slate-700">
+                      <input type="checkbox" className="mt-1" checked={volForm.interestAreas.includes(area)} onChange={(e) => setVolForm({ ...volForm, interestAreas: e.target.checked ? [...volForm.interestAreas, area] : volForm.interestAreas.filter((item) => item !== area) })} />{area}
+                    </label>
+                  ))}</div></fieldset>
+                <div><label className="block text-xs font-bold text-slate-700 mb-1">¿Tienes experiencia con animales o voluntariado?</label>
+                  <textarea rows={2} maxLength={1000} value={volForm.animalExperience} onChange={(e) => setVolForm({ ...volForm, animalExperience: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm" /></div>
+                <div><label className="block text-xs font-bold text-slate-700 mb-1">¿Por qué deseas ser voluntario?</label>
+                  <textarea rows={3} maxLength={1500} value={volForm.motivation} onChange={(e) => setVolForm({ ...volForm, motivation: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm" /></div>
+                <label className="flex items-start gap-2 text-xs text-slate-700"><input required type="checkbox" className="mt-0.5" checked={volForm.acceptsSafetyRules} onChange={(e) => setVolForm({ ...volForm, acceptsSafetyRules: e.target.checked })} />Acepto respetar las normas de seguridad y convivencia del refugio. *</label>
+                <label className="flex items-start gap-2 text-xs text-slate-700"><input required type="checkbox" className="mt-0.5" checked={volForm.authorizesDataUse} onChange={(e) => setVolForm({ ...volForm, authorizesDataUse: e.target.checked })} />Autorizo al refugio a utilizar mis datos para evaluar esta solicitud y contactarme. *</label>
+                {volError && <p role="alert" className="text-sm text-red-700 bg-red-50 p-3 rounded-lg">{volError}</p>}
+                <button type="submit" disabled={volLoading || volForm.availableDays.length === 0 || volForm.interestAreas.length === 0}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-sm">
+                  <Send className="w-4 h-4" />{volLoading ? "Enviando..." : "Enviar solicitud de voluntariado"}
+                </button>
+              </form>
+            ) : (
+              <p className="text-xs text-slate-500">Tu solicitud será revisada antes de confirmar tu participación.</p>
+            )}
           </div>
         </div>
       </section>

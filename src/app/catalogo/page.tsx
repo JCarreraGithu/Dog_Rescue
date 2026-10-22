@@ -11,7 +11,7 @@ import {
   FileText,
   ShieldCheck,
   Search,
-  Sparkles,
+  ExternalLink,
 } from "lucide-react";
 
 function CatalogoContent() {
@@ -28,16 +28,32 @@ function CatalogoContent() {
 
   // Modal de Detalle / Postulación
   const [selectedDog, setSelectedDog] = useState<any | null>(null);
-  const [appForm, setAppForm] = useState({
+  const initialForm = {
     applicantName: "",
-    applicantEmail: "",
+    applicantAge: "",
     applicantPhone: "",
-    applicantAddress: "",
-    homeType: "Casa",
-    hasYard: true,
-    hasOtherPets: false,
-  });
+    petsAllowed: "",
+    safeHome: "",
+    enoughSpace: "",
+    petAccess: "",
+    knowsFiveFreedoms: "",
+    commitsToWelfare: "",
+    commitsToSterilize: "",
+  };
+  const [appForm, setAppForm] = useState(initialForm);
   const [appSubmitted, setAppSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  const facebookUrl = "https://www.facebook.com/people/DOG-rescue-Guatemala/100079476368990/";
+  const yesNoFields = [
+    { key: "petsAllowed", label: "¿Tienes permiso para tener mascotas en tu vivienda?" },
+    { key: "safeHome", label: "¿Tu vivienda es segura para la mascota?" },
+    { key: "enoughSpace", label: "¿Cuentas con espacio suficiente para la mascota?" },
+    { key: "knowsFiveFreedoms", label: "¿Conoces las 5 libertades del bienestar animal?" },
+    { key: "commitsToWelfare", label: "¿Te comprometes a cumplir las 5 libertades del bienestar animal?" },
+    { key: "commitsToSterilize", label: "¿Te comprometes a esterilizar a la mascota cuando corresponda?" },
+  ] as const;
 
   const fetchDogs = async () => {
     setLoading(true);
@@ -68,32 +84,40 @@ function CatalogoContent() {
     fetchDogs();
   }, [ageFilter, sizeFilter, temperamentFilter]);
 
-  const handleAppSubmit = async (e: React.FormEvent) => {
+  const handleAppSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedDog) return;
+    if (!selectedDog || submitting) return;
+    setSubmitting(true);
+    setSubmitError("");
     try {
+      const payload = {
+        dogId: selectedDog.id,
+        applicantName: appForm.applicantName.trim(),
+        applicantAge: Number(appForm.applicantAge),
+        applicantPhone: appForm.applicantPhone.trim(),
+        petAccess: appForm.petAccess,
+        petsAllowed: appForm.petsAllowed === "true",
+        safeHome: appForm.safeHome === "true",
+        enoughSpace: appForm.enoughSpace === "true",
+        knowsFiveFreedoms: appForm.knowsFiveFreedoms === "true",
+        commitsToWelfare: appForm.commitsToWelfare === "true",
+        commitsToSterilize: appForm.commitsToSterilize === "true",
+      };
       const res = await fetch("/api/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...appForm,
-          dogId: selectedDog.id,
-        }),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        setAppSubmitted(true);
-        setAppForm({
-          applicantName: "",
-          applicantEmail: "",
-          applicantPhone: "",
-          applicantAddress: "",
-          homeType: "Casa",
-          hasYard: true,
-          hasOtherPets: false,
-        });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo enviar la solicitud. Inténtalo de nuevo.");
       }
+      setAppSubmitted(true);
+      setAppForm(initialForm);
     } catch (err) {
-      console.error(err);
+      setSubmitError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -244,6 +268,7 @@ function CatalogoContent() {
                     onClick={() => {
                       setSelectedDog(dog);
                       setAppSubmitted(false);
+                      setSubmitError("");
                     }}
                     className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-1.5"
                   >
@@ -294,129 +319,114 @@ function CatalogoContent() {
               </div>
             </div>
 
-            {/* Formulario Postulación */}
+            {/* Consulta por Facebook: no envía datos a la plataforma */}
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 space-y-3">
+              <p className="text-sm font-bold text-blue-950">¿Prefieres consultarnos por Facebook?</p>
+              <p className="text-sm text-blue-900">
+                📸 Toma una captura de la información de {selectedDog.name} y escríbenos por Facebook.
+                ¡Con gusto te atenderemos!
+              </p>
+              <a
+                href={facebookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-bold text-white transition"
+              >
+                Consultar por Facebook <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+
+            {/* Formulario de solicitud inicial */}
             <div className="border-t border-slate-200 pt-6">
               <h3 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-emerald-600" />
-                <span>Formulario de Postulación de Adopción</span>
+                Formulario de Postulación de Adopción
               </h3>
               <p className="text-xs text-slate-500 mb-4">
-                Llena tus datos para que el equipo administrativo precalifique tu solicitud para adoptar a {selectedDog.name}.
+                Completa estos datos iniciales para solicitar la adopción de {selectedDog.name}.
+                El refugio te contactará para continuar la evaluación.
               </p>
-
               {appSubmitted ? (
                 <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl text-center space-y-2">
                   <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-                  <h4 className="font-bold text-lg text-emerald-900">¡Solicitud Enviada con Éxito!</h4>
+                  <h4 className="font-bold text-lg text-emerald-900">¡Solicitud enviada con éxito!</h4>
                   <p className="text-xs text-emerald-800 leading-relaxed">
-                    Hemos recibido tus datos para adoptar a <strong>{selectedDog.name}</strong>. El equipo del refugio en Amatitlán revisará la información y te contactará para agendar la entrevista.
+                    Recibimos tu solicitud para adoptar a <strong>{selectedDog.name}</strong>.
+                    El equipo del refugio revisará la información y te contactará.
                   </p>
-                  <button
-                    onClick={() => setSelectedDog(null)}
-                    className="mt-4 bg-emerald-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl"
-                  >
+                  <button onClick={() => setSelectedDog(null)} className="mt-4 bg-emerald-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl">
                     Cerrar y seguir navegando
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleAppSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Nombre Completo del Solicitante</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Ej. Sofía Morales"
-                        value={appForm.applicantName}
-                        onChange={(e) => setAppForm({ ...appForm, applicantName: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono / WhatsApp</label>
-                      <input
-                        type="tel"
-                        required
-                        placeholder="Ej. 5544-3322"
-                        value={appForm.applicantPhone}
-                        onChange={(e) => setAppForm({ ...appForm, applicantPhone: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Correo Electrónico</label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="sofia@ejemplo.com"
-                        value={appForm.applicantEmail}
-                        onChange={(e) => setAppForm({ ...appForm, applicantEmail: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Dirección de Residencia</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Ej. Amatitlán / Ciudad Guatemala"
-                        value={appForm.applicantAddress}
-                        onChange={(e) => setAppForm({ ...appForm, applicantAddress: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
+                <form onSubmit={handleAppSubmit} className="space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-3">
+                      <label htmlFor="applicantName" className="block text-xs font-bold text-slate-700 mb-1">Nombre completo</label>
+                      <input id="applicantName" required maxLength={150} type="text" value={appForm.applicantName}
+                        onChange={(e) => setAppForm({ ...appForm, applicantName: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+                    </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Tipo de Vivienda</label>
-                      <select
-                        value={appForm.homeType}
-                        onChange={(e) => setAppForm({ ...appForm, homeType: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white"
-                      >
-                        <option value="Casa">Casa Propia</option>
-                        <option value="Casa Alquilada">Casa Alquilada</option>
-                        <option value="Departamento">Departamento</option>
+                      <label htmlFor="applicantAge" className="block text-xs font-bold text-slate-700 mb-1">Edad</label>
+                      <input id="applicantAge" required type="number" min={18} max={120} value={appForm.applicantAge}
+                        onChange={(e) => setAppForm({ ...appForm, applicantAge: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label htmlFor="applicantPhone" className="block text-xs font-bold text-slate-700 mb-1">Teléfono / WhatsApp</label>
+                      <input id="applicantPhone" required type="tel" maxLength={30} value={appForm.applicantPhone}
+                        onChange={(e) => setAppForm({ ...appForm, applicantPhone: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {yesNoFields.slice(0, 3).map(({ key, label }) => (
+                      <div key={key} className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                        <label htmlFor={key} className="block text-xs font-bold text-slate-700 mb-2">{label}</label>
+                        <select id={key} required value={appForm[key]}
+                          onChange={(e) => setAppForm({ ...appForm, [key]: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+                          <option value="">Selecciona una respuesta</option>
+                          <option value="true">Sí</option>
+                          <option value="false">No</option>
+                        </select>
+                      </div>
+                    ))}
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                      <label htmlFor="petAccess" className="block text-xs font-bold text-slate-700 mb-2">
+                        ¿A qué ambientes de la vivienda tendrá acceso la mascota?
+                      </label>
+                      <select id="petAccess" required value={appForm.petAccess}
+                        onChange={(e) => setAppForm({ ...appForm, petAccess: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+                        <option value="">Selecciona una respuesta</option>
+                        <option value="Todos">Todos</option>
+                        <option value="Algunos">Algunos</option>
                       </select>
                     </div>
-
-                    <div className="flex items-center gap-2 pt-5">
-                      <input
-                        type="checkbox"
-                        id="hasYard"
-                        checked={appForm.hasYard}
-                        onChange={(e) => setAppForm({ ...appForm, hasYard: e.target.checked })}
-                        className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
-                      />
-                      <label htmlFor="hasYard" className="text-xs font-bold text-slate-700">
-                        ¿Cuenta con Patio/Jardín Cercado?
-                      </label>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-5">
-                      <input
-                        type="checkbox"
-                        id="hasOtherPets"
-                        checked={appForm.hasOtherPets}
-                        onChange={(e) => setAppForm({ ...appForm, hasOtherPets: e.target.checked })}
-                        className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
-                      />
-                      <label htmlFor="hasOtherPets" className="text-xs font-bold text-slate-700">
-                        ¿Tiene otras mascotas en casa?
-                      </label>
-                    </div>
+                    {yesNoFields.slice(3).map(({ key, label }) => (
+                      <div key={key} className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                        <label htmlFor={key} className="block text-xs font-bold text-slate-700 mb-2">{label}</label>
+                        <select id={key} required value={appForm[key]}
+                          onChange={(e) => setAppForm({ ...appForm, [key]: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+                          <option value="">Selecciona una respuesta</option>
+                          <option value="true">Sí</option>
+                          <option value="false">No</option>
+                        </select>
+                      </div>
+                    ))}
                   </div>
-
-                  <button
-                    type="submit"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm mt-4"
-                  >
-                    <Heart className="w-4 h-4 fill-white" />
-                    <span>Enviar Solicitud de Adopción para {selectedDog.name}</span>
+                  <p className="text-xs text-slate-500">
+                    Tus respuestas serán utilizadas por DOG Rescue Guatemala para evaluar tu solicitud y contactarte.
+                    Los datos personales se compartirán únicamente con el equipo autorizado del refugio.
+                  </p>
+                  {submitError && <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">{submitError}</p>}
+                  <button type="submit" disabled={submitting}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm">
+                    <Heart className="w-4 h-4" />
+                    {submitting ? "Enviando solicitud..." : `Enviar solicitud de adopción para ${selectedDog.name}`}
                   </button>
                 </form>
               )}
