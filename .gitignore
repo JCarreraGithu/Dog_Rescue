@@ -30,3 +30,7 @@ prisma/*.db-journal
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Datos privados del personal y bitácora
+src/data/admin-users.json
+src/data/audit-log.json

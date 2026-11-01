@@ -1,0 +1,96 @@
+[
+  {
+    "id": "notif-1793573885753-qyi5",
+    "type": "system",
+    "title": "Lema de inicio actualizado",
+    "message": "El lema principal de la página de inicio fue actualizado: \"Transformando vidas, un rescate a la vez.\".",
+    "targetTab": "notifications",
+    "read": false,
+    "createdAt": "2026-11-01T22:58:05.753Z"
+  },
+  {
+    "id": "notif-1793236788877-s01c",
+    "type": "order",
+    "title": "Nuevo Pedido #PED-788866 • Recoger en Sede (Q110)",
+    "message": "castro555 (Tel: y5675675675) • Pago: Efectivo Contra Entrega • Entrega: Recoger en Sede Amatitlán • Productos: 1x Playera Oficial \"Guardianes de Amatitlán\" (Talla: S).",
+    "targetTab": "store",
+    "read": true,
+    "createdAt": "2026-10-29T01:19:48.877Z",
+    "metadata": {
+      "orderId": "PED-788866",
+      "total": 110,
+      "deliveryMethod": "Recoger en Sede",
+      "paymentMethod": "Efectivo Contra Entrega"
+    }
+  },
+  {
+    "id": "notif-1793236565272-6x7k",
+    "type": "adoption",
+    "title": "Nueva Solicitud de Adopción: Rocky",
+    "message": "ddsadas (20 años • Tel: 4343534534534534) envió postulación para adoptar a Rocky y aceptó el Acta de Compromiso.",
+    "targetTab": "applications",
+    "read": true,
+    "createdAt": "2026-10-29T01:16:05.272Z",
+    "metadata": {
+      "applicationId": "app-1793236565265",
+      "dogId": "demo-dog-1",
+      "dogName": "Rocky",
+      "applicantName": "ddsadas",
+      "applicantPhone": "4343534534534534"
+    }
+  },
+  {
+    "id": "notif-1793180094066-w2k5",
+    "type": "case_report",
+    "title": "Reporte de Perrito en Riesgo (Urgencia Alta)",
+    "message": "CASTROO (434534543) reportó en \"4TA AV A\": FEFEWFWEFWEFWEFEWF",
+    "targetTab": "dogs",
+    "read": true,
+    "createdAt": "2026-10-28T09:34:54.066Z",
+    "metadata": {
+      "reportId": "reporte-1793180094057"
+    }
+  },
+  {
+    "id": "notif-1793178750756-a9uy",
+    "type": "order",
+    "title": "Nueva Compra en Tienda Solidaria (Q110)",
+    "message": "erico castro • Tel: 456546564 solicitó: 1x Playera Oficial \"Guardianes de Amatitlán\" (Talla: S). Nota: \"trerterter\"",
+    "targetTab": "store",
+    "read": false,
+    "createdAt": "2026-10-28T09:12:30.756Z",
+    "metadata": {
+      "orderId": "pedido-1793178750753",
+      "total": 110
+    }
+  },
+  {
+    "id": "notif-1793178503631-o7dx",
+    "type": "order",
+    "title": "Nueva Compra en Tienda Solidaria (Q120)",
+    "message": "Cliente Solidario solicitó: 1x Playera Edición Especial \"Adopta un Amigo\" (Talla: S).",
+    "targetTab": "store",
+    "read": true,
+    "createdAt": "2026-10-28T09:08:23.631Z",
+    "metadata": {
+      "orderId": "pedido-1793178503613",
+      "total": 120
+    }
+  },
+  {
+    "id": "notif-1793177860978-aa5y",
+    "type": "adoption",
+    "title": "Nueva Solicitud de Adopción: Rocky",
+    "message": "sdsdfsdfsd (24 años • Tel: 345345435) envió postulación para adoptar a Rocky y aceptó el Acta de Compromiso.",
+    "targetTab": "applications",
+    "read": true,
+    "createdAt": "2026-10-28T08:57:40.978Z",
+    "metadata": {
+      "applicationId": "app-1793177860975",
+      "dogId": "demo-dog-1",
+      "dogName": "Rocky",
+      "applicantName": "sdsdfsdfsd",
+      "applicantPhone": "345345435"
+    }
+  }
+]

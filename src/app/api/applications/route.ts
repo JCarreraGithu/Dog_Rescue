@@ -1,8 +1,14 @@
-
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { DEFAULT_DOGS } from "@/data/default-dogs";
+import {
+  getLocalApplications,
+  saveLocalApplications,
+  LocalAdoptionApplication,
+} from "@/lib/local-records";
+import { addNotification } from "@/lib/notifications";
 
 async function isAdminAuthenticated() {
   const cookieStore = await cookies();
@@ -14,26 +20,38 @@ async function isAdminAuthenticated() {
 export async function GET() {
   try {
     if (!(await isAdminAuthenticated())) {
-      return NextResponse.json(
-        { error: "No autorizado" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const apps = await prisma.adoptionApplication.findMany({
-      include: {
-        dog: {
-          select: {
-            id: true,
-            name: true,
-            photoUrl: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const localApps = await getLocalApplications();
 
-    return NextResponse.json(apps, {
+    if (process.env.DATABASE_URL) {
+      try {
+        const dbApps = await prisma.adoptionApplication.findMany({
+          include: {
+            dog: {
+              select: {
+                id: true,
+                name: true,
+                photoUrl: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        const merged = [
+          ...localApps,
+          ...dbApps.filter((d) => !localApps.some((l) => l.id === d.id)),
+        ];
+        return NextResponse.json(merged, {
+          headers: { "Cache-Control": "no-store" },
+        });
+      } catch {
+        // Fallback a registros locales
+      }
+    }
+
+    return NextResponse.json(localApps, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
@@ -46,7 +64,6 @@ export async function GET() {
 }
 
 // Los visitantes pueden enviar solicitudes
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -62,9 +79,7 @@ export async function POST(request: Request) {
         : "";
 
     const age = body.applicantAge;
-
-    const validBoolean = (value: unknown) =>
-      typeof value === "boolean";
+    const validBoolean = (value: unknown) => typeof value === "boolean";
 
     if (
       !name ||
@@ -88,48 +103,84 @@ export async function POST(request: Request) {
       );
     }
 
-    const dog = await prisma.dog.findFirst({
-      where: {
-        id: body.dogId,
-        isDeleted: false,
-        status: "En Adopción",
+    // Buscar información del perrito para vincularla a la solicitud y notificación
+    const matchedDemoDog = DEFAULT_DOGS.find((d) => d.id === body.dogId);
+    const dogInfo = matchedDemoDog
+      ? {
+          id: matchedDemoDog.id,
+          name: matchedDemoDog.name,
+          photoUrl: matchedDemoDog.photoUrl,
+        }
+      : {
+          id: body.dogId,
+          name: "Perrito en Adopción",
+          photoUrl:
+            "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800",
+        };
+
+    const newLocalApp: LocalAdoptionApplication = {
+      id: `app-${Date.now()}`,
+      dogId: body.dogId,
+      dog: dogInfo,
+      applicantName: name,
+      applicantAge: age,
+      applicantPhone: phone,
+      petsAllowed: body.petsAllowed,
+      safeHome: body.safeHome,
+      enoughSpace: body.enoughSpace,
+      petAccess: body.petAccess,
+      knowsFiveFreedoms: body.knowsFiveFreedoms,
+      commitsToWelfare: body.commitsToWelfare,
+      commitsToSterilize: body.commitsToSterilize,
+      status: "En Evaluación",
+      createdAt: new Date().toISOString(),
+    };
+
+    const currentLocal = await getLocalApplications();
+    await saveLocalApplications([newLocalApp, ...currentLocal]);
+
+    // Registrar notificación administrativa
+    await addNotification({
+      type: "adoption",
+      title: `Nueva Solicitud de Adopción: ${dogInfo.name}`,
+      message: `${name} (${age} años • Tel: ${phone}) envió postulación para adoptar a ${dogInfo.name} y aceptó el Acta de Compromiso.`,
+      targetTab: "applications",
+      metadata: {
+        applicationId: newLocalApp.id,
+        dogId: dogInfo.id,
+        dogName: dogInfo.name,
+        applicantName: name,
+        applicantPhone: phone,
       },
-      select: { id: true },
     });
 
-    if (!dog) {
-      return NextResponse.json(
-        { error: "Este perrito no está disponible para adopción" },
-        { status: 404 }
-      );
+    // Si hay base de datos configurada y no es un perro demo, intentar guardar también en DB
+    if (process.env.DATABASE_URL && !body.dogId.startsWith("demo-dog")) {
+      try {
+        await prisma.adoptionApplication.create({
+          data: {
+            dogId: body.dogId,
+            applicantName: name,
+            applicantAge: age,
+            applicantPhone: phone,
+            petsAllowed: body.petsAllowed,
+            safeHome: body.safeHome,
+            enoughSpace: body.enoughSpace,
+            petAccess: body.petAccess,
+            knowsFiveFreedoms: body.knowsFiveFreedoms,
+            commitsToWelfare: body.commitsToWelfare,
+            commitsToSterilize: body.commitsToSterilize,
+            status: "En Evaluación",
+          },
+        });
+      } catch {
+        // Ya quedó guardado en almacenamiento local
+      }
     }
 
-    const app = await prisma.adoptionApplication.create({
-      data: {
-        dogId: dog.id,
-        applicantName: name,
-        applicantAge: age,
-        applicantPhone: phone,
-        petsAllowed: body.petsAllowed,
-        safeHome: body.safeHome,
-        enoughSpace: body.enoughSpace,
-        petAccess: body.petAccess,
-        knowsFiveFreedoms: body.knowsFiveFreedoms,
-        commitsToWelfare: body.commitsToWelfare,
-        commitsToSterilize: body.commitsToSterilize,
-        status: "En Evaluación",
-      },
-      select: {
-        id: true,
-        status: true,
-        createdAt: true,
-      },
-    });
-
-    return NextResponse.json(app, { status: 201 });
+    return NextResponse.json(newLocalApp, { status: 201 });
   } catch (error) {
     console.error("Error al registrar solicitud:", error);
-
     return NextResponse.json(
       { error: "Error al registrar solicitud" },
       { status: 500 }
@@ -137,19 +188,14 @@ export async function POST(request: Request) {
   }
 }
 
-
 // Solo administradores pueden evaluar solicitudes
 export async function PUT(request: Request) {
   try {
     if (!(await isAdminAuthenticated())) {
-      return NextResponse.json(
-        { error: "No autorizado" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
     const body = await request.json();
-
     const allowedStatuses = [
       "Pendiente",
       "En Evaluación",
@@ -167,53 +213,41 @@ export async function PUT(request: Request) {
       );
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const current = await tx.adoptionApplication.findUnique({
-        where: { id: body.id },
-      });
+    // Actualizar en archivo local
+    const localApps = await getLocalApplications();
+    const idx = localApps.findIndex((a) => a.id === body.id);
+    if (idx !== -1) {
+      localApps[idx] = {
+        ...localApps[idx],
+        status: body.status,
+        evaluatorNotes:
+          typeof body.evaluatorNotes === "string"
+            ? body.evaluatorNotes
+            : localApps[idx].evaluatorNotes,
+      };
+      await saveLocalApplications(localApps);
+      return NextResponse.json(localApps[idx]);
+    }
 
-      if (!current) {
-        throw new Error("Solicitud no encontrada");
-      }
-
-      const application = await tx.adoptionApplication.update({
+    // Fallback a Prisma si era una solicitud en DB
+    if (process.env.DATABASE_URL) {
+      const updated = await prisma.adoptionApplication.update({
         where: { id: body.id },
         data: {
           status: body.status,
           evaluatorNotes:
             typeof body.evaluatorNotes === "string"
               ? body.evaluatorNotes
-              : current.evaluatorNotes,
+              : undefined,
         },
       });
+      return NextResponse.json(updated);
+    }
 
-      // Contar únicamente una nueva aprobación
-      if (
-        body.status === "Aprobado" &&
-        current.status !== "Aprobado" &&
-        application.dogId
-      ) {
-        const dogUpdate = await tx.dog.updateMany({
-          where: {
-            id: application.dogId,
-            isDeleted: false,
-            status: "En Adopción",
-          },
-          data: { status: "Adoptado" },
-        });
-
-        if (dogUpdate.count === 1) {
-          await tx.transparencyStat.updateMany({
-            where: { key: "adoptions_count" },
-            data: { value: { increment: 1 } },
-          });
-        }
-      }
-
-      return application;
-    });
-
-    return NextResponse.json(updated);
+    return NextResponse.json(
+      { error: "Solicitud no encontrada" },
+      { status: 404 }
+    );
   } catch (error) {
     console.error("Error al actualizar solicitud:", error);
     return NextResponse.json(

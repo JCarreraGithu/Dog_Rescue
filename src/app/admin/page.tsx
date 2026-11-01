@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Dog,
+  Heart,
   Calendar,
   Package,
   Users,
@@ -24,15 +26,86 @@ import {
   ArrowDownRight,
   Download,
   Eye,
+  ShoppingBag,
+  HeartHandshake,
+  Bell,
+  RotateCcw,
+  Upload,
+  FolderOpen,
+  Sparkles,
+  KeyRound,
+  LogOut,
+  UserCog,
+  ScrollText,
 } from "lucide-react";
+import StoreManager from "@/components/admin/StoreManager";
+import SpecialCasesManager from "@/components/admin/SpecialCasesManager";
+import NotificationsCenter from "@/components/admin/NotificationsCenter";
+import CaseReportsManager from "@/components/admin/CaseReportsManager";
+import DogDocumentationModal, { computeDocProgress } from "@/components/admin/DogDocumentationModal";
+import HeroSettingsManager from "@/components/admin/HeroSettingsManager";
+import TeamManager from "@/components/admin/TeamManager";
+import AuditLogViewer from "@/components/admin/AuditLogViewer";
+import ChangePasswordModal from "@/components/admin/ChangePasswordModal";
+import { ROLE_LABELS, Role } from "@/lib/permissions";
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<
-    "dogs" | "agenda" | "applications" | "inventory" | "volunteers" | "reports"
+    "notifications" | "dogs" | "case-reports" | "agenda" | "applications" | "inventory" | "volunteers" | "store" | "special-cases" | "hero-settings" | "transparency" | "reports" | "team" | "audit"
   >("dogs");
+
+  // Sesión del personal (rol, cambio de contraseña obligatorio)
+  const [staffUser, setStaffUser] = useState<{
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+    mustChangePassword: boolean;
+  } | null>(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const isReadOnly = staffUser?.role === "voluntario";
+  const isSuperadmin = staffUser?.role === "superadmin";
+
+  useEffect(() => {
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setStaffUser(d.user ?? null))
+      .catch(() => {});
+  }, []);
+
+  const handleStaffLogout = async () => {
+    const res = await fetch("/api/auth/logout", { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    window.location.href = data.loginPath || "/";
+  };
+
+  // Estados para contadores públicos de impacto / transparencia
+  const [transparencyStats, setTransparencyStats] = useState({
+    rescues_count: 510,
+    adoptions_count: 260,
+    sterilizations_count: 1020,
+  });
+  const [savingTransparency, setSavingTransparency] = useState(false);
+  const [transparencySaved, setTransparencySaved] = useState(false);
 
   // Estados de datos
   const [dogs, setDogs] = useState<any[]>([]);
+  const [deletedDogs, setDeletedDogs] = useState<any[]>([]);
+  const [dogsSubView, setDogsSubView] = useState<"activos" | "documentacion" | "papelera">("activos");
+  const [documentationDog, setDocumentationDog] = useState<{ id: string; name: string } | null>(null);
+  const [editingFullDog, setEditingFullDog] = useState<any | null>(null);
+  const [uploadingDogPhoto, setUploadingDogPhoto] = useState(false);
+  const [busyDogId, setBusyDogId] = useState<string | null>(null);
+  const [dogActionFeedback, setDogActionFeedback] = useState<{
+    type: "deleted" | "restored" | "saved";
+    dogId?: string;
+    dogName: string;
+    message: string;
+  } | null>(null);
+  const [confirmPermanentDelete, setConfirmPermanentDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [applications, setApplications] = useState<any[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
   const [downloadingApplicationId, setDownloadingApplicationId] = useState<string | null>(null);
@@ -46,6 +119,7 @@ export default function AdminPage() {
   const [downloadingVolunteerId, setDownloadingVolunteerId] = useState<string | null>(null);
   const [volunteerBusy, setVolunteerBusy] = useState(false);
   const [caseReports, setCaseReports] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   // Filtro y selecciones
   const [selectedDog, setSelectedDog] = useState<any | null>(null);
@@ -55,6 +129,16 @@ const [isSavingDog, setIsSavingDog] = useState(false);
 const [dogEditError, setDogEditError] = useState("");
 
 const [dogEditForm, setDogEditForm] = useState({
+  name: "",
+  breed: "Mestizo",
+  ageCategory: "Adulto",
+  ageYears: 1.5,
+  gender: "Macho",
+  size: "Mediano",
+  temperament: "Sociable",
+  status: "En Adopción",
+  photoUrl: "",
+  isSterilized: false,
   rescueHistory: "",
   healthNotes: "",
 });
@@ -223,27 +307,113 @@ const [dogEditForm, setDogEditForm] = useState({
   // Cargar datos al montar
   const loadAllData = async () => {
     try {
-      const [dogsRes, appRes, invRes, volRes, caseRes] = await Promise.all([
-        fetch("/api/dogs").then((r) => r.json()),
-        fetch("/api/applications").then((r) => r.json()),
-        fetch("/api/inventory").then((r) => r.json()),
-        fetch("/api/volunteers").then((r) => r.json()),
-        fetch("/api/case-reports").then((r) => r.json()),
+      const [dogsRes, deletedDogsRes, appRes, invRes, volRes, caseRes, transRes, notifRes] = await Promise.all([
+        fetch("/api/dogs", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+        fetch("/api/dogs?deletedOnly=true", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+        fetch("/api/applications").then((r) => r.json()).catch(() => null),
+        fetch("/api/inventory").then((r) => r.json()).catch(() => null),
+        fetch("/api/volunteers").then((r) => r.json()).catch(() => null),
+        fetch("/api/case-reports").then((r) => r.json()).catch(() => null),
+        fetch("/api/transparency").then((r) => r.json()).catch(() => null),
+        fetch("/api/notifications").then((r) => r.json()).catch(() => null),
       ]);
 
       if (Array.isArray(dogsRes)) setDogs(dogsRes);
+      if (Array.isArray(deletedDogsRes)) setDeletedDogs(deletedDogsRes);
       if (Array.isArray(appRes)) setApplications(appRes);
       if (Array.isArray(invRes)) setInventory(invRes);
       if (Array.isArray(volRes)) setVolunteers(volRes);
       if (Array.isArray(caseRes)) setCaseReports(caseRes);
+      if (Array.isArray(notifRes)) setNotifications(notifRes);
+      if (Array.isArray(transRes)) {
+        const rescues = transRes.find((s: any) => s.key === "rescues_count")?.value;
+        const adoptions = transRes.find((s: any) => s.key === "adoptions_count")?.value;
+        const sterilizations = transRes.find((s: any) => s.key === "sterilizations_count")?.value;
+        setTransparencyStats({
+          rescues_count: rescues ?? 510,
+          adoptions_count: adoptions ?? 260,
+          sterilizations_count: sterilizations ?? 1020,
+        });
+      }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleSaveTransparency = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingTransparency(true);
+    setTransparencySaved(false);
+    try {
+      const res = await fetch("/api/transparency", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(transparencyStats),
+      });
+      if (res.ok) {
+        setTransparencySaved(true);
+        setTimeout(() => setTransparencySaved(false), 4000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingTransparency(false);
     }
   };
 
   useEffect(() => {
     loadAllData();
   }, []);
+
+  // Subir fotografía desde dispositivo para nuevo perro o edición
+  const handleDogPhotoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    target: "create" | "edit"
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDogPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/dogs/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo subir la imagen.");
+      if (target === "create") {
+        setDogForm((prev) => ({ ...prev, photoUrl: data.url }));
+      } else {
+        setDogEditForm((prev) => ({ ...prev, photoUrl: data.url }));
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error al subir la fotografía.");
+    } finally {
+      setUploadingDogPhoto(false);
+      e.target.value = "";
+    }
+  };
+
+  // Abrir modal de edición completa de expediente canino
+  const openFullDogEdit = (dog: any) => {
+    setEditingFullDog(dog);
+    setDogEditForm({
+      name: dog.name || "",
+      breed: dog.breed || "Mestizo",
+      ageCategory: dog.ageCategory || "Adulto",
+      ageYears: Number(dog.ageYears) || 1.5,
+      gender: dog.gender || "Macho",
+      size: dog.size || "Mediano",
+      temperament: dog.temperament || "Sociable",
+      status: dog.status || "En Adopción",
+      photoUrl: dog.photoUrl || "",
+      isSterilized: Boolean(dog.isSterilized),
+      rescueHistory: dog.rescueHistory || "",
+      healthNotes: dog.healthNotes || "",
+    });
+    setDogEditError("");
+  };
 
   // Handler crear perro
   const handleCreateDog = async (e: React.FormEvent) => {
@@ -276,25 +446,22 @@ const [dogEditForm, setDogEditForm] = useState({
     }
   };
 
-
-
-  // Guardar cambios del expediente canino
-  const handleSaveDogEdit = async () => {
-    if (!selectedDog || isSavingDog) return;
+  // Guardar cambios del expediente canino (tanto desde edición rápida como edición completa)
+  const handleSaveDogEdit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const targetDog = editingFullDog || selectedDog;
+    if (!targetDog || isSavingDog) return;
 
     setIsSavingDog(true);
     setDogEditError("");
 
     try {
-      const res = await fetch(`/api/dogs/${selectedDog.id}`, {
+      const res = await fetch(`/api/dogs/${targetDog.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          rescueHistory: dogEditForm.rescueHistory,
-          healthNotes: dogEditForm.healthNotes,
-        }),
+        body: JSON.stringify(dogEditForm),
       });
 
       if (!res.ok) {
@@ -306,23 +473,28 @@ const [dogEditForm, setDogEditForm] = useState({
 
       const updatedDog = await res.json();
 
-      // Actualizar el expediente que está abierto
-      setSelectedDog((previous: any) => ({
-        ...previous,
-        rescueHistory: updatedDog.rescueHistory,
-        healthNotes: updatedDog.healthNotes,
-      }));
+      if (selectedDog?.id === updatedDog.id) {
+        setSelectedDog((previous: any) => ({
+          ...previous,
+          ...updatedDog,
+        }));
+      }
 
-      // Actualizar también la lista de perros
       setDogs((previous) =>
         previous.map((dog) =>
-          dog.id === updatedDog.id
-            ? { ...dog, ...updatedDog }
-            : dog
+          dog.id === updatedDog.id ? { ...dog, ...updatedDog } : dog
         )
       );
 
       setIsEditingDog(false);
+      setEditingFullDog(null);
+      setDogActionFeedback({
+        type: "saved",
+        dogId: updatedDog.id,
+        dogName: updatedDog.name,
+        message: `Los cambios del expediente de "${updatedDog.name}" se guardaron correctamente.`,
+      });
+      await loadAllData();
     } catch (error) {
       console.error("Error al guardar expediente:", error);
       setDogEditError(
@@ -335,16 +507,10 @@ const [dogEditForm, setDogEditForm] = useState({
     }
   };
 
-
-  // Eliminar perrito sin borrar su expediente de Neon
+  // Mover perrito a la Papelera de Expedientes (sin bloquear con window.confirm)
   const handleDeleteDog = async (id: string, name: string) => {
-    const confirmed = window.confirm(
-      `¿Estás seguro de que deseas eliminar a ${name}?\n\n` +
-      "Desaparecerá del catálogo y de los expedientes activos, " +
-      "pero su información permanecerá guardada."
-    );
-
-    if (!confirmed) return;
+    if (busyDogId) return;
+    setBusyDogId(id);
 
     try {
       const res = await fetch(`/api/dogs/${id}`, {
@@ -354,29 +520,130 @@ const [dogEditForm, setDogEditForm] = useState({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(
-          data.error || "No se pudo eliminar el perrito"
+          data.error || "No se pudo mover el expediente a la papelera"
         );
       }
 
-      // Quitar al perrito de la lista
-      setDogs((previous) =>
-        previous.filter((dog) => dog.id !== id)
-      );
+      if (selectedDog?.id === id) {
+        setSelectedDog(null);
+      }
+      if (editingFullDog?.id === id) {
+        setEditingFullDog(null);
+      }
 
-      // Cerrar su expediente si estaba abierto
+      // Actualizar estado inmediato y recargar desde servidor
+      const movedDog = dogs.find((d) => d.id === id);
+      setDogs((prev) => prev.filter((d) => d.id !== id));
+      if (movedDog) {
+        setDeletedDogs((prev) => [
+          { ...movedDog, isDeleted: true, deletedAt: new Date().toISOString() },
+          ...prev.filter((d) => d.id !== id),
+        ]);
+      }
+
+      setDogActionFeedback({
+        type: "deleted",
+        dogId: id,
+        dogName: name,
+        message: `"${name}" fue enviado a la Papelera de Expedientes.`,
+      });
+
+      await loadAllData();
+    } catch (error) {
+      console.error("Error al eliminar perrito:", error);
+      setDogActionFeedback({
+        type: "deleted",
+        dogName: name,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Ocurrió un error al mover el perrito a la papelera",
+      });
+    } finally {
+      setBusyDogId(null);
+    }
+  };
+
+  // Restablecer expediente desde la Papelera
+  const handleRestoreDog = async (id: string, name: string) => {
+    if (busyDogId) return;
+    setBusyDogId(id);
+    try {
+      const res = await fetch(`/api/dogs/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore", isDeleted: false }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo restablecer el expediente");
+      }
+
+      setDeletedDogs((prev) => prev.filter((d) => d.id !== id));
+      setDogActionFeedback({
+        type: "restored",
+        dogId: id,
+        dogName: name,
+        message: `¡El expediente de "${name}" fue restablecido a los Expedientes Activos!`,
+      });
+
+      await loadAllData();
+    } catch (error) {
+      setDogActionFeedback({
+        type: "restored",
+        dogName: name,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Error al restablecer el expediente",
+      });
+    } finally {
+      setBusyDogId(null);
+    }
+  };
+
+  // Eliminar definitivamente de la Papelera (confirmado mediante modal React)
+  const executePermanentDeleteDog = async () => {
+    if (!confirmPermanentDelete || busyDogId) return;
+    const { id, name } = confirmPermanentDelete;
+    setBusyDogId(id);
+
+    try {
+      const res = await fetch(`/api/dogs/${id}?permanent=true`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo eliminar definitivamente");
+      }
+
       if (selectedDog?.id === id) {
         setSelectedDog(null);
       }
 
-      alert(`${name} fue eliminado de los expedientes activos.`);
-    } catch (error) {
-      console.error("Error al eliminar perrito:", error);
+      setDeletedDogs((prev) => prev.filter((d) => d.id !== id));
+      setConfirmPermanentDelete(null);
+      setDogActionFeedback({
+        type: "deleted",
+        dogName: name,
+        message: `El expediente de "${name}" fue eliminado definitivamente de la Papelera.`,
+      });
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error al eliminar el perrito"
-      );
+      await loadAllData();
+    } catch (error) {
+      setConfirmPermanentDelete(null);
+      setDogActionFeedback({
+        type: "deleted",
+        dogName: name,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Error al eliminar definitivamente el expediente",
+      });
+    } finally {
+      setBusyDogId(null);
     }
   };
 
@@ -561,8 +828,9 @@ const [dogEditForm, setDogEditForm] = useState({
     }
   };
 
-  // Detectar items de bajo stock
+  // Detectar items de bajo stock y notificaciones sin leer
   const lowStockItems = inventory.filter((item) => item.quantity <= item.minThreshold);
+  const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
   return (
     <div className="min-h-screen bg-slate-100 pb-16">
@@ -579,36 +847,106 @@ const [dogEditForm, setDogEditForm] = useState({
             </p>
           </div>
 
-          {/* Alerta rápida en header si hay bajo stock */}
-          {lowStockItems.length > 0 && (
-            <div className="bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>¡Atención! {lowStockItems.length} insumos en Bajo Stock</span>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {staffUser && (
+              <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs">
+                <div className="leading-tight">
+                  <p className="font-bold text-white">{staffUser.name}</p>
+                  <p className="text-[10px] text-emerald-300">{ROLE_LABELS[staffUser.role]}</p>
+                </div>
+                <button type="button" onClick={() => setShowChangePassword(true)} title="Cambiar mi contraseña"
+                  className="p-1.5 rounded-lg hover:bg-white/15 cursor-pointer">
+                  <KeyRound className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={handleStaffLogout} title="Cerrar sesión"
+                  className="p-1.5 rounded-lg hover:bg-white/15 cursor-pointer">
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {/* Botón de Notificaciones en Header */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("notifications")}
+              className="relative bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition cursor-pointer"
+            >
+              <Bell className="w-4 h-4 text-amber-400" />
+              <span>Notificaciones</span>
+              {unreadNotificationsCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[11px] font-black">
+                  {unreadNotificationsCount} nuevas
+                </span>
+              )}
+            </button>
+
+            {/* Alerta rápida en header si hay bajo stock */}
+            {lowStockItems.length > 0 && (
+              <div className="bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>¡Atención! {lowStockItems.length} insumos en Bajo Stock</span>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {isReadOnly && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold rounded-xl px-4 py-3">
+            Tu rol es de solo lectura: puedes consultar la información, pero no modificarla.
+          </div>
+        )}
+
         {/* NAVEGACIÓN PESTAÑAS */}
         <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-xs">
           {[
+            { id: "notifications", label: "Notificaciones", icon: Bell, count: unreadNotificationsCount, alert: unreadNotificationsCount },
             { id: "dogs", label: "Expedientes Caninos", icon: Dog, count: dogs.length },
+            { id: "dogs-trash", label: "Papelera", icon: Trash2, count: deletedDogs.length },
+            { id: "case-reports", label: "Reportes de Riesgo", icon: AlertTriangle, count: caseReports.filter(r => r.status !== "Caso Cerrado").length, alert: caseReports.filter(r => r.status === "Recibido" && r.urgency === "Alta (Emergencia)").length },
             { id: "agenda", label: "Agenda Médica", icon: Calendar },
             { id: "applications", label: "Gestión Adoptantes", icon: FileText, count: applications.filter(a => ["Pendiente", "En Evaluación"].includes(a.status)).length },
             { id: "inventory", label: "Control Inventario", icon: Package, alert: lowStockItems.length },
             { id: "volunteers", label: "Gestión Voluntarios", icon: Users, count: volunteers.filter(v => v.status === "En Evaluación").length },
+            { id: "store", label: "Gestión Tienda", icon: ShoppingBag },
+            { id: "hero-settings", label: "Lema e Inicio", icon: Sparkles },
+            { id: "special-cases", label: "Conócenos y Casos", icon: HeartHandshake },
+            { id: "transparency", label: "Cifras de Impacto", icon: ShieldCheck },
             { id: "reports", label: "Reportes Estadísticos", icon: BarChart3 },
-          ].map((tab) => {
+            ...(isSuperadmin
+              ? [
+                  { id: "team", label: "Equipo y Accesos", icon: UserCog },
+                  { id: "audit", label: "Bitácora", icon: ScrollText },
+                ]
+              : []),
+          ].map((tab: { id: string; label: string; icon: any; count?: number; alert?: number }) => {
             const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+            const isActive =
+              tab.id === "dogs"
+                ? activeTab === "dogs" && dogsSubView === "activos"
+                : tab.id === "dogs-trash"
+                ? activeTab === "dogs" && dogsSubView === "papelera"
+                : activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition ${
+                type="button"
+                onClick={() => {
+                  if (tab.id === "dogs") {
+                    setActiveTab("dogs");
+                    setDogsSubView("activos");
+                  } else if (tab.id === "dogs-trash") {
+                    setActiveTab("dogs");
+                    setDogsSubView("papelera");
+                  } else {
+                    setActiveTab(tab.id as any);
+                  }
+                }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer ${
                   isActive
-                    ? "bg-emerald-600 text-white shadow-sm"
+                    ? tab.id === "dogs-trash"
+                      ? "bg-rose-600 text-white shadow-sm"
+                      : "bg-emerald-600 text-white shadow-sm"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
@@ -616,7 +954,11 @@ const [dogEditForm, setDogEditForm] = useState({
                 <span>{tab.label}</span>
                 {tab.count !== undefined && (
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                    isActive ? "bg-emerald-800 text-emerald-100" : "bg-slate-200 text-slate-700"
+                    isActive
+                      ? tab.id === "dogs-trash"
+                        ? "bg-rose-800 text-rose-100"
+                        : "bg-emerald-800 text-emerald-100"
+                      : "bg-slate-200 text-slate-700"
                   }`}>
                     {tab.count}
                   </span>
@@ -632,81 +974,539 @@ const [dogEditForm, setDogEditForm] = useState({
         </div>
 
         {/* ------------------------------------------------------------- */}
-        {/* 1. PESTAÑA EXPEDIENTES CANINOS */}
+        {/* 0. PESTAÑA CENTRO DE NOTIFICACIONES Y ACTIVIDAD */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "notifications" && (
+          <NotificationsCenter
+            notifications={notifications}
+            onRefresh={loadAllData}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+          />
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* 1. PESTAÑA EXPEDIENTES CANINOS (ACTIVOS + PAPELERA) */}
         {/* ------------------------------------------------------------- */}
         {activeTab === "dogs" && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
               <div>
                 <h2 className="text-xl font-extrabold text-slate-900">Expedientes Caninos del Albergue</h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  Gestiona la ficha individual, historial de rescate, fotos y registros médicos de cada perrito.
+                  Gestiona la ficha individual, edita datos, sube fotos, consulta registros médicos o restablece perritos desde la papelera.
                 </p>
               </div>
 
-              <button
-                onClick={() => setShowAddDogModal(true)}
-                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Registrar Nuevo Perrito</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Selector Activos vs Archivo Documental vs Papelera */}
+                <div className="inline-flex flex-wrap bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setDogsSubView("activos")}
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-extrabold transition cursor-pointer ${
+                      dogsSubView === "activos"
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Dog className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Activos</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">
+                      {dogs.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDogsSubView("documentacion")}
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-extrabold transition cursor-pointer ${
+                      dogsSubView === "documentacion"
+                        ? "bg-slate-900 text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <FolderOpen className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Archivo Documental (3 Etapas)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDogsSubView("papelera")}
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-extrabold transition cursor-pointer ${
+                      dogsSubView === "papelera"
+                        ? "bg-rose-600 text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Papelera</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                        dogsSubView === "papelera"
+                          ? "bg-rose-800 text-rose-100"
+                          : deletedDogs.length > 0
+                          ? "bg-rose-100 text-rose-700"
+                          : "bg-slate-200 text-slate-600"
+                      }`}
+                    >
+                      {deletedDogs.length}
+                    </span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddDogModal(true)}
+                  className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Registrar Nuevo Perrito</span>
+                </button>
+              </div>
             </div>
 
-            {/* Listado de Perros */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {dogs.map((dog) => (
-                <div
-                  key={dog.id}
-                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition flex flex-col"
-                >
-                  <div className="relative h-48 bg-slate-100">
-                    <img src={dog.photoUrl} alt={dog.name} className="w-full h-full object-cover" />
-                    <span className={`absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-lg ${
-                      dog.status === "En Adopción" ? "bg-emerald-600 text-white" :
-                      dog.status === "Adoptado" ? "bg-blue-600 text-white" : "bg-amber-600 text-white"
-                    }`}>
-                      {dog.status}
-                    </span>
-                  </div>
+            {/* Banner de confirmación / deshacer cuando se elimina, restaura o edita un perrito */}
+            {dogActionFeedback && (
+              <div
+                className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  dogActionFeedback.type === "deleted"
+                    ? "bg-amber-50 border-amber-300 text-amber-950"
+                    : "bg-emerald-50 border-emerald-300 text-emerald-950"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 text-xs sm:text-sm font-bold">
+                  {dogActionFeedback.type === "deleted" ? (
+                    <Trash2 className="w-4 h-4 text-amber-700 shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  )}
+                  <span>{dogActionFeedback.message}</span>
+                </div>
 
-                  <div className="p-5 flex-grow flex flex-col justify-between space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-bold text-slate-800">{dog.name}</h3>
-                        <span className="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
-                          {dog.size}
+                <div className="flex flex-wrap items-center gap-2">
+                  {dogActionFeedback.type === "deleted" && dogActionFeedback.dogId && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleRestoreDog(
+                            dogActionFeedback.dogId!,
+                            dogActionFeedback.dogName
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl cursor-pointer transition"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Restablecer ahora</span>
+                      </button>
+
+                      {dogsSubView !== "papelera" && (
+                        <button
+                          type="button"
+                          onClick={() => setDogsSubView("papelera")}
+                          className="inline-flex items-center gap-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-extrabold px-3 py-1.5 rounded-xl cursor-pointer transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Ir a la Papelera ({deletedDogs.length})</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {dogActionFeedback.type === "restored" && dogsSubView === "papelera" && (
+                    <button
+                      type="button"
+                      onClick={() => setDogsSubView("activos")}
+                      className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl cursor-pointer transition"
+                    >
+                      <Dog className="w-3.5 h-3.5" />
+                      <span>Ver en Expedientes Activos</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setDogActionFeedback(null)}
+                    className="p-1.5 rounded-lg hover:bg-black/5 text-slate-500 cursor-pointer"
+                    aria-label="Cerrar aviso"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {dogsSubView === "activos" ? (
+              /* VISTA 1: EXPEDIENTES ACTIVOS */
+              dogs.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
+                  <Dog className="w-10 h-10 text-slate-400 mx-auto" />
+                  <h3 className="text-base font-extrabold text-slate-800">
+                    No hay expedientes activos registrados
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Registra un nuevo perrito o revisa la Papelera si deseas restablecer un expediente eliminado anteriormente.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {dogs.map((dog) => (
+                    <div
+                      key={dog.id}
+                      className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition flex flex-col"
+                    >
+                      <div className="relative h-48 bg-slate-100">
+                        <img src={dog.photoUrl} alt={dog.name} className="w-full h-full object-cover" />
+                        <span className={`absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-lg ${
+                          dog.status === "En Adopción" ? "bg-emerald-600 text-white" :
+                          dog.status === "Adoptado" ? "bg-blue-600 text-white" : "bg-amber-600 text-white"
+                        }`}>
+                          {dog.status}
                         </span>
+                        {dog.isSterilized && (
+                          <span className="absolute top-3 right-3 text-[10px] font-black px-2 py-1 rounded-lg bg-slate-900/75 text-emerald-300 backdrop-blur-xs">
+                            Esterilizado
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">
-                        {dog.breed} • {dog.gender} • {dog.ageCategory} ({dog.ageYears} años)
-                      </p>
-                      <p className="text-xs text-slate-600 mt-2 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        {dog.healthNotes || "Sin notas de salud registradas."}
+
+                      <div className="p-5 flex-grow flex flex-col justify-between space-y-4">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-xl font-bold text-slate-800">{dog.name}</h3>
+                            <span className="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
+                              {dog.size}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            {dog.breed} • {dog.gender} • {dog.ageCategory} ({dog.ageYears} años)
+                          </p>
+                          <p className="text-xs text-slate-600 mt-2 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            {dog.healthNotes || "Sin notas de salud registradas."}
+                          </p>
+
+                          {/* Indicador de las 3 Etapas Documentales */}
+                          {(() => {
+                            const prog = computeDocProgress(dog.documentation);
+                            return (
+                              <div className="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5">
+                                <div className="flex items-center justify-between text-[11px] font-bold">
+                                  <span className="text-slate-600">Documentación (3 Etapas)</span>
+                                  <span className="text-emerald-700 font-black">{prog.percent}%</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-1 text-[10px] font-extrabold text-center">
+                                  <span
+                                    className={`py-1 rounded-md border ${
+                                      prog.stage1
+                                        ? "bg-emerald-100 border-emerald-300 text-emerald-900"
+                                        : "bg-white border-slate-200 text-slate-400"
+                                    }`}
+                                  >
+                                    1. Ingreso {prog.stage1 ? "✔" : ""}
+                                  </span>
+                                  <span
+                                    className={`py-1 rounded-md border ${
+                                      prog.stage2
+                                        ? "bg-emerald-100 border-emerald-300 text-emerald-900"
+                                        : "bg-white border-slate-200 text-slate-400"
+                                    }`}
+                                  >
+                                    2. Rehab {prog.stage2 ? "✔" : ""}
+                                  </span>
+                                  <span
+                                    className={`py-1 rounded-md border ${
+                                      prog.stage3
+                                        ? "bg-emerald-100 border-emerald-300 text-emerald-900"
+                                        : "bg-white border-slate-200 text-slate-400"
+                                    }`}
+                                  >
+                                    3. Adopción {prog.stage3 ? "✔" : ""}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        <div className="space-y-2">
+                          <button
+                            type="button"
+                            onClick={() => setDocumentationDog({ id: dog.id, name: dog.name })}
+                            className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <FolderOpen className="w-4 h-4" />
+                            <span>Documentación (Llegada · Rehab · Adopción)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDog(dog)}
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <FileText className="w-4 h-4 text-emerald-400" />
+                            <span>Ver Expediente y Salud ({dog.medicalRecords?.length || 0})</span>
+                          </button>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openFullDogEdit(dog)}
+                              className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                              <span>Editar</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={busyDogId === dog.id}
+                              onClick={() => handleDeleteDog(dog.id, dog.name)}
+                              className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>{busyDogId === dog.id ? "Moviendo..." : "Eliminar"}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : dogsSubView === "documentacion" ? (
+              /* VISTA 2: ARCHIVO DOCUMENTAL POR CICLO DE VIDA (3 ETAPAS) */
+              <div className="space-y-4">
+                <div className="bg-slate-900 text-white rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                      <FolderOpen className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black">
+                        Archivo Documental por Ciclo de Vida (Llegada ➔ Rehabilitación ➔ Adopción)
+                      </h3>
+                      <p className="text-xs text-slate-300 mt-0.5">
+                        Control centralizado de actas de rescate, certificados veterinarios, contratos de adopción Ley 5-2017 y seguimiento post-adopción.
                       </p>
                     </div>
-
-                    <button
-                      onClick={() => setSelectedDog(dog)}
-                      className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
-                    >
-                      <FileText className="w-4 h-4 text-emerald-400" />
-                      <span>Ver Expediente y Salud ({dog.medicalRecords?.length || 0})</span>
-                    </button>
-
-<button
-  type="button"
-  onClick={() => handleDeleteDog(dog.id, dog.name)}
-  className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2"
->
-  <Trash2 className="w-4 h-4" />
-  <span>Eliminar perrito</span>
-</button>
-
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase text-[11px]">
+                          <th className="py-3.5 px-4">Perrito</th>
+                          <th className="py-3.5 px-4">1. Llegada / Ingreso</th>
+                          <th className="py-3.5 px-4">2. Rehabilitación</th>
+                          <th className="py-3.5 px-4">3. Adopción y Seguimiento</th>
+                          <th className="py-3.5 px-4">Avance</th>
+                          <th className="py-3.5 px-4 text-right">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {dogs.map((dog) => {
+                          const prog = computeDocProgress(dog.documentation);
+                          const doc = dog.documentation;
+                          return (
+                            <tr key={dog.id} className="hover:bg-slate-50/80 transition">
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-3">
+                                  <img
+                                    src={dog.photoUrl}
+                                    alt={dog.name}
+                                    className="w-10 h-10 rounded-xl object-cover border border-slate-200"
+                                  />
+                                  <div>
+                                    <p className="font-black text-slate-900 text-sm">{dog.name}</p>
+                                    <p className="text-[11px] text-slate-500">
+                                      {dog.breed} • {dog.status}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold ${
+                                    prog.stage1
+                                      ? "bg-emerald-100 text-emerald-900"
+                                      : "bg-amber-50 text-amber-800"
+                                  }`}
+                                >
+                                  {prog.stage1 ? "Acta Completa ✔" : "En Registro"}
+                                </span>
+                                <p className="text-[11px] text-slate-500 mt-1">
+                                  {doc?.arrival?.rescueLocation || "Amatitlán"}
+                                </p>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold ${
+                                    prog.stage2
+                                      ? "bg-emerald-100 text-emerald-900"
+                                      : "bg-rose-50 text-rose-800"
+                                  }`}
+                                >
+                                  {prog.stage2 ? "Alta Médica ✔" : "En Rehabilitación"}
+                                </span>
+                                <p className="text-[11px] text-slate-500 mt-1">
+                                  Esterilizado: {dog.isSterilized ? "Sí ✔" : "Pendiente"}
+                                </p>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold ${
+                                    prog.stage3
+                                      ? "bg-blue-100 text-blue-900"
+                                      : "bg-slate-100 text-slate-600"
+                                  }`}
+                                >
+                                  {prog.stage3 ? "Adoptado c/ Contrato ✔" : "En Espera de Hogar"}
+                                </span>
+                                {doc?.adoption?.adopterName && (
+                                  <p className="text-[11px] text-slate-600 font-semibold mt-1">
+                                    Familia: {doc.adoption.adopterName}
+                                  </p>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
+                                  <div
+                                    className="bg-emerald-600 h-full rounded-full"
+                                    style={{ width: `${prog.percent}%` }}
+                                  />
+                                </div>
+                                <span className="text-[11px] font-black text-slate-700 mt-1 inline-block">
+                                  {prog.percent}%
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => setDocumentationDog({ id: dog.id, name: dog.name })}
+                                  className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl cursor-pointer transition"
+                                >
+                                  <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                                  <span>Abrir Carpeta Documental</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* VISTA 3: PAPELERA DE EXPEDIENTES ELIMINADOS */
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <Trash2 className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-extrabold text-amber-950">
+                        Papelera de Expedientes Caninos ({deletedDogs.length})
+                      </h3>
+                      <p className="text-xs text-amber-800 mt-0.5">
+                        Los perritos en la papelera están ocultos del catálogo público. Puedes restablecerlos en cualquier momento con un clic o eliminarlos definitivamente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {deletedDogs.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
+                    <Trash2 className="w-10 h-10 text-slate-300 mx-auto" />
+                    <h3 className="text-base font-extrabold text-slate-800">
+                      La papelera está vacía
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto">
+                      Ningún expediente canino ha sido enviado a la papelera recientemente.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {deletedDogs.map((dog) => (
+                      <div
+                        key={dog.id}
+                        className="bg-white rounded-2xl border-2 border-dashed border-rose-200 overflow-hidden shadow-xs flex flex-col opacity-95"
+                      >
+                        <div className="relative h-48 bg-slate-100">
+                          <img
+                            src={dog.photoUrl}
+                            alt={dog.name}
+                            className="w-full h-full object-cover grayscale-[35%]"
+                          />
+                          <span className="absolute top-3 left-3 text-xs font-black px-2.5 py-1 rounded-lg bg-rose-600 text-white">
+                            En Papelera
+                          </span>
+                          {dog.deletedAt && (
+                            <span className="absolute bottom-2 left-2 right-2 text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-900/80 text-slate-200 backdrop-blur-xs">
+                              Eliminado el{" "}
+                              {new Date(dog.deletedAt).toLocaleString("es-GT", {
+                                dateStyle: "short",
+                                timeStyle: "short",
+                              })}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="p-5 flex-grow flex flex-col justify-between space-y-4">
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-xl font-bold text-slate-800">{dog.name}</h3>
+                              <span className="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
+                                {dog.size}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">
+                              {dog.breed} • {dog.gender} • {dog.ageCategory} ({dog.ageYears} años)
+                            </p>
+                            <p className="text-xs text-slate-600 mt-2 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                              {dog.rescueHistory || dog.healthNotes || "Sin notas adicionales."}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              onClick={() => handleRestoreDog(dog.id, dog.name)}
+                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                              <span>Restablecer Expediente</span>
+                            </button>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDog(dog)}
+                                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Ver Ficha</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={busyDogId === dog.id}
+                                onClick={() => setConfirmPermanentDelete({ id: dog.id, name: dog.name })}
+                                className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold py-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Borrar Final</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -963,7 +1763,173 @@ const [dogEditForm, setDogEditForm] = useState({
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* 6. PESTAÑA REPORTES ESTADÍSTICOS */}
+        {/* 6. PESTAÑA CIFRAS DE IMPACTO / TRANSPARENCIA */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "transparency" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+                      Cifras de Impacto y Transparencia
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                      Edita los contadores oficiales que se muestran al público en la página principal.
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href="/#transparencia"
+                  target="_blank"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-600 hover:text-sky-700 bg-sky-50 px-4 py-2 rounded-xl border border-sky-200 transition"
+                >
+                  <span>Ver en el sitio web</span>
+                  <ArrowUpRight className="w-4 h-4" />
+                </Link>
+              </div>
+
+              {transparencySaved && (
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold flex items-center gap-2 animate-fadeIn">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span>¡Cifras de impacto actualizadas con éxito! Los cambios ya se reflejan en la página de inicio.</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveTransparency} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Rescates */}
+                  <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-3">
+                    <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+                      <Dog className="w-4 h-4 text-emerald-600" />
+                      <span>Perros Rescatados</span>
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={transparencyStats.rescues_count}
+                        onChange={(e) =>
+                          setTransparencyStats({
+                            ...transparencyStats,
+                            rescues_count: parseInt(e.target.value, 10) || 0,
+                          })
+                        }
+                        className="w-full text-3xl font-black text-emerald-800 bg-white px-3.5 py-2.5 rounded-xl border border-emerald-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Retirados de situaciones de maltrato o peligro en Amatitlán y Guatemala.
+                    </p>
+                  </div>
+
+                  {/* Adopciones */}
+                  <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-3">
+                    <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
+                      <Heart className="w-4 h-4 text-amber-600 fill-amber-500" />
+                      <span>Adopciones Integradas</span>
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={transparencyStats.adoptions_count}
+                        onChange={(e) =>
+                          setTransparencyStats({
+                            ...transparencyStats,
+                            adoptions_count: parseInt(e.target.value, 10) || 0,
+                          })
+                        }
+                        className="w-full text-3xl font-black text-amber-800 bg-white px-3.5 py-2.5 rounded-xl border border-amber-300 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Hogares amorosos verificados con seguimiento y contrato de adopción.
+                    </p>
+                  </div>
+
+                  {/* Esterilizaciones */}
+                  <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200/80 space-y-3">
+                    <div className="flex items-center gap-2 text-blue-800 font-bold text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                      <span>Esterilizaciones</span>
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={transparencyStats.sterilizations_count}
+                        onChange={(e) =>
+                          setTransparencyStats({
+                            ...transparencyStats,
+                            sterilizations_count: parseInt(e.target.value, 10) || 0,
+                          })
+                        }
+                        className="w-full text-3xl font-black text-blue-800 bg-white px-3.5 py-2.5 rounded-xl border border-blue-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Frenando la sobrepoblación y el abandono en la comunidad.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={savingTransparency}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold px-7 py-3 rounded-xl shadow-md transition flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{savingTransparency ? "Guardando cambios..." : "Guardar Cifras de Impacto"}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* 6. PESTAÑA GESTIÓN DE TIENDA SOLIDARIA */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "store" && <StoreManager />}
+
+        {/* ------------------------------------------------------------- */}
+        {/* 6A. PESTAÑA PERSONALIZACIÓN DE LEMA Y PORTADA */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "hero-settings" && <HeroSettingsManager />}
+
+        {/* ------------------------------------------------------------- */}
+        {/* 6B. PESTAÑA CASOS ESPECIALES (CONÓCENOS E INICIO) */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "special-cases" && <SpecialCasesManager />}
+
+        {/* ------------------------------------------------------------- */}
+        {/* 6C. PESTAÑA REPORTES DE RIESGO CIUDADANOS */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "case-reports" && <CaseReportsManager />}
+
+        {/* PESTAÑAS DE SEGURIDAD (solo administrador total) */}
+        {activeTab === "team" && isSuperadmin && staffUser && <TeamManager currentUserId={staffUser.id} />}
+        {activeTab === "audit" && isSuperadmin && <AuditLogViewer />}
+
+        {(showChangePassword || staffUser?.mustChangePassword) && (
+          <ChangePasswordModal
+            forced={Boolean(staffUser?.mustChangePassword)}
+            onClose={() => setShowChangePassword(false)}
+            onDone={() => window.location.reload()}
+          />
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* 7. PESTAÑA REPORTES ESTADÍSTICOS */}
         {/* ------------------------------------------------------------- */}
         {activeTab === "reports" && (
           <div className="space-y-6">
@@ -1107,24 +2073,63 @@ const [dogEditForm, setDogEditForm] = useState({
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative space-y-6 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setSelectedDog(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 p-2 rounded-full transition"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 p-2 rounded-full transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div id="printable-ficha" className="space-y-6">
               {/* Header Ficha */}
-              <div className="border-b border-slate-200 pb-4 flex items-center justify-between">
+              <div className="border-b border-slate-200 pb-4 flex flex-wrap items-center justify-between gap-3 pr-8">
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900">Expediente Canino #{selectedDog.id.slice(0, 8)}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-black text-slate-900">Expediente Canino #{selectedDog.id.slice(0, 8)}</h2>
+                    {selectedDog.isDeleted && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-black">
+                        En Papelera
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-slate-500 font-medium">Refugio DOG Rescue Guatemala • Amatitlán</p>
                 </div>
-                <button
-                  onClick={() => window.print()}
-                  className="bg-slate-900 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 hover:bg-slate-800"
-                >
-                  <Printer className="w-4 h-4" /> Imprimir Ficha
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedDog.isDeleted ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleRestoreDog(selectedDog.id, selectedDog.name);
+                        setSelectedDog(null);
+                      }}
+                      className="bg-emerald-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 hover:bg-emerald-700 cursor-pointer"
+                    >
+                      <RotateCcw className="w-4 h-4" /> Restablecer Expediente
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => openFullDogEdit(selectedDog)}
+                        className="bg-emerald-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 hover:bg-emerald-700 cursor-pointer"
+                      >
+                        <Edit className="w-4 h-4" /> Editar Expediente
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyDogId === selectedDog.id}
+                        onClick={() => handleDeleteDog(selectedDog.id, selectedDog.name)}
+                        className="bg-rose-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 hover:bg-rose-700 cursor-pointer disabled:opacity-50"
+                      >
+                        <Trash2 className="w-4 h-4" /> Eliminar (Papelera)
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => window.print()}
+                    className="bg-slate-900 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 hover:bg-slate-800 cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4" /> Imprimir Ficha
+                  </button>
+                </div>
               </div>
 
               {/* Info perro */}
@@ -1139,134 +2144,59 @@ const [dogEditForm, setDogEditForm] = useState({
                   <p><span className="font-bold">Raza:</span> {selectedDog.breed}</p>
                   <p><span className="font-bold">Edad:</span> {selectedDog.ageCategory} ({selectedDog.ageYears} años)</p>
                   <p><span className="font-bold">Sexo / Tamaño:</span> {selectedDog.gender} • {selectedDog.size}</p>
+                  <p><span className="font-bold">Temperamento:</span> {selectedDog.temperament}</p>
                   <p><span className="font-bold">Esterilizado:</span> {selectedDog.isSterilized ? "Sí" : "No"}</p>
                   <p><span className="font-bold">Estado:</span> {selectedDog.status}</p>
                 </div>
               </div>
 
+              <div className="bg-slate-50 p-4 rounded-xl text-xs space-y-3 border border-slate-200">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="font-bold text-slate-900">
+                    Información del Rescate y Salud
+                  </h4>
 
-<div className="bg-slate-50 p-4 rounded-xl text-xs space-y-3 border border-slate-200">
+                  {!selectedDog.isDeleted && (
+                    <button
+                      type="button"
+                      onClick={() => openFullDogEdit(selectedDog)}
+                      className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-emerald-700 cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      Editar información
+                    </button>
+                  )}
+                </div>
 
-  <div className="flex items-center justify-between gap-3">
-    <h4 className="font-bold text-slate-900">
-      Información del Rescate y Salud
-    </h4>
+                <div className="space-y-2">
+                  <p>
+                    <span className="font-bold text-slate-900">
+                      Historia de Rescate:
+                    </span>{" "}
+                    {selectedDog.rescueHistory || "Sin información registrada"}
+                  </p>
 
-    {!isEditingDog && (
-      <button
-        type="button"
-        onClick={() => {
-          setDogEditForm({
-            rescueHistory: selectedDog.rescueHistory || "",
-            healthNotes: selectedDog.healthNotes || "",
-          });
-          setDogEditError("");
-          setIsEditingDog(true);
-        }}
-        className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-lg font-bold hover:bg-emerald-700"
-      >
-        <Edit className="w-3.5 h-3.5" />
-        Editar información
-      </button>
-    )}
-  </div>
-
-  {isEditingDog ? (
-    <div className="space-y-3">
-
-      <div>
-        <label className="block font-bold text-slate-900 mb-1">
-          Historia de Rescate
-        </label>
-        <textarea
-          rows={4}
-          value={dogEditForm.rescueHistory}
-          onChange={(e) =>
-            setDogEditForm((previous) => ({
-              ...previous,
-              rescueHistory: e.target.value,
-            }))
-          }
-          className="w-full p-3 border border-slate-300 rounded-xl bg-white text-slate-900"
-        />
-      </div>
-
-      <div>
-        <label className="block font-bold text-slate-900 mb-1">
-          Notas de Salud
-        </label>
-        <textarea
-          rows={4}
-          value={dogEditForm.healthNotes}
-          onChange={(e) =>
-            setDogEditForm((previous) => ({
-              ...previous,
-              healthNotes: e.target.value,
-            }))
-          }
-          className="w-full p-3 border border-slate-300 rounded-xl bg-white text-slate-900"
-        />
-      </div>
-
-      {dogEditError && (
-        <p role="alert" className="text-red-600 font-semibold">
-          {dogEditError}
-        </p>
-      )}
-
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          disabled={isSavingDog}
-          onClick={() => {
-            setIsEditingDog(false);
-            setDogEditError("");
-          }}
-          className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-bold disabled:opacity-50"
-        >
-          Cancelar
-        </button>
-
-        <button
-          type="button"
-          disabled={isSavingDog}
-          onClick={handleSaveDogEdit}
-          className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {isSavingDog ? "Guardando..." : "Guardar cambios"}
-        </button>
-      </div>
-    </div>
-  ) : (
-    <div className="space-y-2">
-      <p>
-        <span className="font-bold text-slate-900">
-          Historia de Rescate:
-        </span>{" "}
-        {selectedDog.rescueHistory || "Sin información registrada"}
-      </p>
-
-      <p>
-        <span className="font-bold text-slate-900">
-          Notas de Salud:
-        </span>{" "}
-        {selectedDog.healthNotes || "Sin información registrada"}
-      </p>
-    </div>
-  )}
-</div>
-
+                  <p>
+                    <span className="font-bold text-slate-900">
+                      Notas de Salud:
+                    </span>{" "}
+                    {selectedDog.healthNotes || "Sin información registrada"}
+                  </p>
+                </div>
+              </div>
 
               {/* Historial Médico */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-extrabold text-slate-900 text-sm">Historial de Tratamientos y Vacunas</h4>
-                  <button
-                    onClick={() => setShowAddMedicalModal(true)}
-                    className="text-xs text-emerald-700 font-bold hover:underline"
-                  >
-                    + Agregar Tratamiento
-                  </button>
+                  {!selectedDog.isDeleted && (
+                    <button
+                      onClick={() => setShowAddMedicalModal(true)}
+                      className="text-xs text-emerald-700 font-bold hover:underline cursor-pointer"
+                    >
+                      + Agregar Tratamiento
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1283,6 +2213,265 @@ const [dogEditForm, setDogEditForm] = useState({
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMAR ELIMINACIÓN DEFINITIVA DE LA PAPELERA */}
+      {confirmPermanentDelete && (
+        <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">
+                  ¿Eliminar definitivamente a {confirmPermanentDelete.name}?
+                </h3>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Esta acción borrará permanentemente el expediente de la Papelera y no se podrá deshacer.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={busyDogId !== null}
+                onClick={() => setConfirmPermanentDelete(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={busyDogId !== null}
+                onClick={executePermanentDeleteDog}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl cursor-pointer disabled:opacity-50"
+              >
+                {busyDogId ? "Eliminando..." : "Sí, Eliminar Definitivamente"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR EXPEDIENTE CANINO COMPLETO */}
+      {editingFullDog && (
+        <div className="fixed inset-0 z-[75] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">
+                  Editar Expediente de {editingFullDog.name}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Modifica cualquier dato de la ficha, estado de adopción, foto o notas médicas.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingFullDog(null)}
+                className="p-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDogEdit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nombre del Perrito</label>
+                  <input
+                    type="text"
+                    required
+                    value={dogEditForm.name}
+                    onChange={(e) => setDogEditForm({ ...dogEditForm, name: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Raza</label>
+                  <input
+                    type="text"
+                    required
+                    value={dogEditForm.breed}
+                    onChange={(e) => setDogEditForm({ ...dogEditForm, breed: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Etapa Edad</label>
+                  <select
+                    value={dogEditForm.ageCategory}
+                    onChange={(e) => setDogEditForm({ ...dogEditForm, ageCategory: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900"
+                  >
+                    <option value="Cachorro">Cachorro</option>
+                    <option value="Joven">Joven</option>
+                    <option value="Adulto">Adulto</option>
+                    <option value="Senior">Senior</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Edad (Años)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    required
+                    value={dogEditForm.ageYears}
+                    onChange={(e) => setDogEditForm({ ...dogEditForm, ageYears: parseFloat(e.target.value) || 1 })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Sexo</label>
+                  <select
+                    value={dogEditForm.gender}
+                    onChange={(e) => setDogEditForm({ ...dogEditForm, gender: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900"
+                  >
+                    <option value="Macho">Macho</option>
+                    <option value="Hembra">Hembra</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tamaño</label>
+                  <select
+                    value={dogEditForm.size}
+                    onChange={(e) => setDogEditForm({ ...dogEditForm, size: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900"
+                  >
+                    <option value="Pequeño">Pequeño</option>
+                    <option value="Mediano">Mediano</option>
+                    <option value="Grande">Grande</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Estado del Expediente</label>
+                  <select
+                    value={dogEditForm.status}
+                    onChange={(e) => setDogEditForm({ ...dogEditForm, status: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
+                  >
+                    <option value="En Adopción">En Adopción</option>
+                    <option value="En Tratamiento">En Tratamiento</option>
+                    <option value="Adoptado">Adoptado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Temperamento</label>
+                  <input
+                    type="text"
+                    value={dogEditForm.temperament}
+                    onChange={(e) => setDogEditForm({ ...dogEditForm, temperament: e.target.value })}
+                    placeholder="Ej. Juguetón y Cariñoso"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-900"
+                  />
+                </div>
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-2.5 rounded-xl border border-slate-200 w-full">
+                    <input
+                      type="checkbox"
+                      checked={dogEditForm.isSterilized}
+                      onChange={(e) => setDogEditForm({ ...dogEditForm, isSterilized: e.target.checked })}
+                      className="w-4 h-4 accent-emerald-600 rounded"
+                    />
+                    <span className="font-bold text-slate-800">¿Está Esterilizado?</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Fotografía (Subir archivo o URL) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="font-bold text-slate-800">Fotografía del Perrito</label>
+                  <label className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer transition">
+                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{uploadingDogPhoto ? "Subiendo..." : "Subir foto desde mi equipo"}</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/avif"
+                      onChange={(e) => handleDogPhotoUpload(e, "edit")}
+                      disabled={uploadingDogPhoto}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="URL de la foto o sube una imagen arriba..."
+                  value={dogEditForm.photoUrl}
+                  onChange={(e) => setDogEditForm({ ...dogEditForm, photoUrl: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900"
+                />
+                {dogEditForm.photoUrl && (
+                  <div className="flex items-center gap-3 pt-1">
+                    <img
+                      src={dogEditForm.photoUrl}
+                      alt="Vista previa"
+                      className="w-20 h-20 object-cover rounded-xl border border-slate-300"
+                    />
+                    <span className="text-[11px] text-slate-500">
+                      Vista previa actual de la fotografía del expediente.
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Historia de Rescate</label>
+                <textarea
+                  rows={3}
+                  value={dogEditForm.rescueHistory}
+                  onChange={(e) => setDogEditForm({ ...dogEditForm, rescueHistory: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Notas de Salud y Vacunación</label>
+                <textarea
+                  rows={3}
+                  value={dogEditForm.healthNotes}
+                  onChange={(e) => setDogEditForm({ ...dogEditForm, healthNotes: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900"
+                />
+              </div>
+
+              {dogEditError && (
+                <p role="alert" className="text-rose-600 font-bold text-xs">
+                  {dogEditError}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  disabled={isSavingDog}
+                  onClick={() => setEditingFullDog(null)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingDog}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingDog ? "Guardando..." : "Guardar Cambios del Expediente"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1346,31 +2535,75 @@ const [dogEditForm, setDogEditForm] = useState({
       {/* MODAL REGISTRAR NUEVO PERRO */}
       {showAddDogModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-slate-900">Registrar Nuevo Perrito al Albergue</h3>
-            <form onSubmit={handleCreateDog} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Nombre</label>
-                <input
-                  type="text"
-                  required
-                  value={dogForm.name}
-                  onChange={(e) => setDogForm({ ...dogForm, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300"
-                />
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 className="text-lg font-black text-slate-900">Registrar Nuevo Perrito al Albergue</h3>
+              <button
+                type="button"
+                onClick={() => setShowAddDogModal(false)}
+                className="p-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateDog} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nombre</label>
+                  <input
+                    type="text"
+                    required
+                    value={dogForm.name}
+                    onChange={(e) => setDogForm({ ...dogForm, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Raza</label>
+                  <input
+                    type="text"
+                    required
+                    value={dogForm.breed}
+                    onChange={(e) => setDogForm({ ...dogForm, breed: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Edad Categoría</label>
                   <select
                     value={dogForm.ageCategory}
                     onChange={(e) => setDogForm({ ...dogForm, ageCategory: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900"
                   >
                     <option value="Cachorro">Cachorro</option>
+                    <option value="Joven">Joven</option>
                     <option value="Adulto">Adulto</option>
                     <option value="Senior">Senior</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Edad (Años)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={dogForm.ageYears}
+                    onChange={(e) => setDogForm({ ...dogForm, ageYears: parseFloat(e.target.value) || 1 })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Sexo</label>
+                  <select
+                    value={dogForm.gender}
+                    onChange={(e) => setDogForm({ ...dogForm, gender: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900"
+                  >
+                    <option value="Macho">Macho</option>
+                    <option value="Hembra">Hembra</option>
                   </select>
                 </div>
                 <div>
@@ -1378,7 +2611,7 @@ const [dogEditForm, setDogEditForm] = useState({
                   <select
                     value={dogForm.size}
                     onChange={(e) => setDogForm({ ...dogForm, size: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900"
                   >
                     <option value="Pequeño">Pequeño</option>
                     <option value="Mediano">Mediano</option>
@@ -1387,56 +2620,101 @@ const [dogEditForm, setDogEditForm] = useState({
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Temperamento</label>
+                  <input
+                    type="text"
+                    value={dogForm.temperament}
+                    onChange={(e) => setDogForm({ ...dogForm, temperament: e.target.value })}
+                    placeholder="Ej. Juguetón y Cariñoso"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900"
+                  />
+                </div>
+                <div className="flex items-end pb-0.5">
+                  <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 w-full">
+                    <input
+                      type="checkbox"
+                      checked={dogForm.isSterilized}
+                      onChange={(e) => setDogForm({ ...dogForm, isSterilized: e.target.checked })}
+                      className="w-4 h-4 accent-emerald-600 rounded"
+                    />
+                    <span className="font-bold text-slate-800">¿Está Esterilizado?</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Fotografía (subida local o URL) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label htmlFor="new-dog-photo" className="block font-bold text-slate-800">
+                    Fotografía del Perrito
+                  </label>
+                  <label className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer transition">
+                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{uploadingDogPhoto ? "Subiendo..." : "Subir foto desde mi equipo"}</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/avif"
+                      onChange={(e) => handleDogPhotoUpload(e, "create")}
+                      disabled={uploadingDogPhoto}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <input
+                  id="new-dog-photo"
+                  type="text"
+                  required
+                  placeholder="Sube una imagen arriba o pega una URL..."
+                  value={dogForm.photoUrl}
+                  onChange={(e) => setDogForm({ ...dogForm, photoUrl: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900"
+                />
+                {dogForm.photoUrl.trim() && (
+                  <div className="flex items-center gap-3 pt-1">
+                    <img
+                      src={dogForm.photoUrl.trim()}
+                      alt="Vista previa del nuevo perrito"
+                      className="w-20 h-20 object-cover rounded-xl border border-slate-200"
+                    />
+                    <span className="text-[11px] text-slate-500">Vista previa de la foto</span>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Historia de Rescate</label>
                 <textarea
                   rows={2}
                   value={dogForm.rescueHistory}
                   onChange={(e) => setDogForm({ ...dogForm, rescueHistory: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300"
-                ></textarea>
-              </div>
-
-              {/* Fotografía alojada en Cloudinary */}
-              <div className="space-y-2">
-                <label htmlFor="new-dog-photo" className="block font-bold text-slate-700">
-                  URL de la fotografía
-                </label>
-                <input
-                  id="new-dog-photo"
-                  type="url"
-                  required
-                  placeholder="https://res.cloudinary.com/..."
-                  value={dogForm.photoUrl}
-                  onChange={(e) => setDogForm({ ...dogForm, photoUrl: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900"
                 />
-                <p className="text-xs text-slate-500">
-                  Sube la foto a Cloudinary y pega aquí el enlace de la imagen.
-                </p>
-                {dogForm.photoUrl.trim() && (
-                  <div className="space-y-1">
-                    <p className="font-semibold text-slate-700">Vista previa:</p>
-                    <img
-                      src={dogForm.photoUrl.trim()}
-                      alt="Vista previa del nuevo perrito"
-                      className="w-40 h-40 object-cover rounded-xl border border-slate-200"
-                    />
-                  </div>
-                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Notas de Salud</label>
+                <textarea
+                  rows={2}
+                  value={dogForm.healthNotes}
+                  onChange={(e) => setDogForm({ ...dogForm, healthNotes: e.target.value })}
+                  placeholder="Ej. Vacunado, desparasitado..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900"
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddDogModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl"
+                  className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl cursor-pointer"
                 >
                   Guardar Perrito
                 </button>
@@ -1569,6 +2847,16 @@ const [dogEditForm, setDogEditForm] = useState({
             </form>
           </div>
         </div>
+      )}
+
+      {/* MODAL DE DOCUMENTACIÓN POR CICLO DE VIDA (3 ETAPAS: LLEGADA, REHABILITACIÓN Y ADOPCIÓN) */}
+      {documentationDog && (
+        <DogDocumentationModal
+          dogId={documentationDog.id}
+          dogName={documentationDog.name}
+          onClose={() => setDocumentationDog(null)}
+          onSaved={loadAllData}
+        />
       )}
     </div>
   );

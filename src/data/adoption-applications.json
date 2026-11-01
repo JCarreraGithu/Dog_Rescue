@@ -1,0 +1,44 @@
+[
+  {
+    "id": "app-1793236565265",
+    "dogId": "demo-dog-1",
+    "dog": {
+      "id": "demo-dog-1",
+      "name": "Rocky",
+      "photoUrl": "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800"
+    },
+    "applicantName": "ddsadas",
+    "applicantAge": 20,
+    "applicantPhone": "4343534534534534",
+    "petsAllowed": true,
+    "safeHome": true,
+    "enoughSpace": true,
+    "petAccess": "Todos",
+    "knowsFiveFreedoms": true,
+    "commitsToWelfare": true,
+    "commitsToSterilize": true,
+    "status": "En Evaluación",
+    "createdAt": "2026-10-29T01:16:05.265Z"
+  },
+  {
+    "id": "app-1793177860975",
+    "dogId": "demo-dog-1",
+    "dog": {
+      "id": "demo-dog-1",
+      "name": "Rocky",
+      "photoUrl": "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800"
+    },
+    "applicantName": "sdsdfsdfsd",
+    "applicantAge": 24,
+    "applicantPhone": "345345435",
+    "petsAllowed": true,
+    "safeHome": true,
+    "enoughSpace": true,
+    "petAccess": "Todos",
+    "knowsFiveFreedoms": true,
+    "commitsToWelfare": true,
+    "commitsToSterilize": true,
+    "status": "En Evaluación",
+    "createdAt": "2026-10-28T08:57:40.975Z"
+  }
+]

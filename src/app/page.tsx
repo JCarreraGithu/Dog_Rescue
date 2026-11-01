@@ -4,6 +4,15 @@ import RefugeMap from "@/components/RefugeMap";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ImpactCarousel from "@/components/ImpactCarousel";
+import { DEFAULT_DOGS } from "@/data/default-dogs";
+import {
+  HomeHeroSettings,
+  DEFAULT_HOME_HERO_SETTINGS,
+  getHeroFontFamilyStyle,
+  getHeroHighlightClass,
+  getHeroFontSizeClass,
+  getHeroWeightClass,
+} from "@/lib/home-settings-client";
 import {
   Dog,
   Heart,
@@ -15,13 +24,18 @@ import {
   ChevronRight,
   Sparkles,
   Send,
+  Camera,
+  Upload,
+  X,
 } from "lucide-react";
 
 export default function HomePage() {
   // Estados para contadores de transparencia
   const [stats, setStats] = useState<any[]>([]);
   // Estados para perros destacados
-  const [featuredDogs, setFeaturedDogs] = useState<any[]>([]);
+  const [featuredDogs, setFeaturedDogs] = useState<any[]>(DEFAULT_DOGS.slice(0, 3));
+  // Configuración del lema y portada
+  const [heroSettings, setHeroSettings] = useState<HomeHeroSettings>(DEFAULT_HOME_HERO_SETTINGS);
   
   // Solicitud pública de voluntariado
   const initialVolForm = {
@@ -51,13 +65,20 @@ export default function HomePage() {
     description: "",
     urgencyLevel: "Media",
   });
+  const [casePhotos, setCasePhotos] = useState<string[]>([]);
+  const [uploadingCasePhoto, setUploadingCasePhoto] = useState(false);
+  const [casePhotoError, setCasePhotoError] = useState("");
   const [caseSubmitted, setCaseSubmitted] = useState(false);
 
   useEffect(() => {
     // Cargar datos iniciales
     fetch("/api/transparency")
       .then((res) => res.json())
-      .then((data) => setStats(data))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setStats(data);
+        }
+      })
       .catch(() => {});
 
     fetch("/api/dogs?status=En Adopción")
@@ -65,6 +86,15 @@ export default function HomePage() {
       .then((data) => {
         if (Array.isArray(data)) {
           setFeaturedDogs(data.slice(0, 3));
+        }
+      })
+      .catch(() => {});
+
+    fetch("/api/home-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && typeof data === "object") {
+          setHeroSettings(data);
         }
       })
       .catch(() => {});
@@ -93,13 +123,58 @@ export default function HomePage() {
     }
   };
 
+  const handleCasePhotoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingCasePhoto(true);
+    setCasePhotoError("");
+
+    try {
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        const fd = new FormData();
+        fd.append("file", file);
+
+        const res = await fetch("/api/case-reports/upload", {
+          method: "POST",
+          body: fd,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) {
+          throw new Error(data.error || "No se pudo subir la foto");
+        }
+        uploaded.push(data.url);
+      }
+
+      if (uploaded.length > 0) {
+        setCasePhotos((prev) => [...prev, ...uploaded]);
+      }
+    } catch (err) {
+      setCasePhotoError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo subir la imagen. Intenta de nuevo."
+      );
+    } finally {
+      setUploadingCasePhoto(false);
+      e.target.value = "";
+    }
+  };
+
   const handleCaseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const res = await fetch("/api/case-reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(caseForm),
+        body: JSON.stringify({
+          ...caseForm,
+          photoUrl: casePhotos[0] || null,
+          photos: casePhotos,
+        }),
       });
       if (res.ok) {
         setCaseSubmitted(true);
@@ -110,6 +185,7 @@ export default function HomePage() {
           description: "",
           urgencyLevel: "Media",
         });
+        setCasePhotos([]);
       }
     } catch (err) {
       console.error(err);
@@ -123,39 +199,77 @@ export default function HomePage() {
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
         
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
-          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 bg-emerald-700/60 backdrop-blur-md border border-emerald-500/30 text-emerald-200 text-xs font-semibold px-3.5 py-1.5 rounded-full">
+          <div
+            className={`lg:col-span-7 space-y-6 ${
+              heroSettings.textAlignment === "center"
+                ? "text-center lg:text-center"
+                : "text-center lg:text-left"
+            }`}
+          >
+            <div
+              className={`inline-flex items-center gap-2 bg-emerald-700/60 backdrop-blur-md border border-emerald-500/30 text-emerald-200 text-xs font-semibold px-3.5 py-1.5 rounded-full ${
+                heroSettings.textAlignment === "center" ? "mx-auto" : ""
+              }`}
+            >
               <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Amatitlán, Guatemala • Iniciativa Comunitaria 100% Local</span>
+              <span>{heroSettings.badgeText}</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
-              Transformando vidas, <br />
-              <span className="text-emerald-400">un rescate a la vez.</span>
+            <h1
+              style={getHeroFontFamilyStyle(heroSettings.fontFamily)}
+              className={`tracking-tight leading-tight transition-all ${getHeroFontSizeClass(
+                heroSettings.fontSize
+              )} ${getHeroWeightClass(heroSettings.fontWeight)} ${
+                heroSettings.fontStyle === "italic" ? "italic" : ""
+              } ${
+                heroSettings.textTransform === "uppercase"
+                  ? "uppercase"
+                  : heroSettings.textTransform === "capitalize"
+                  ? "capitalize"
+                  : ""
+              }`}
+            >
+              <span>{heroSettings.mottoPart1}</span>{" "}
+              <br className="hidden sm:inline" />
+              <span className={getHeroHighlightClass(heroSettings.highlightColor)}>
+                {heroSettings.mottoHighlight}
+              </span>
             </h1>
 
             <p className="text-lg text-emerald-100/90 leading-relaxed max-w-2xl">
-              DOG Rescue Guatemala es un refugio dirigido de manera independiente y sin fines de lucro, centrado en el cuidado, bienestar y protección de los animales. Trabajamos por el rescate, rehabilitación y adopción responsable de perritos en Amatitlán.
+              {heroSettings.description}
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+            <div
+              className={`flex flex-col sm:flex-row items-center gap-4 pt-2 ${
+                heroSettings.textAlignment === "center"
+                  ? "justify-center"
+                  : "justify-center lg:justify-start"
+              }`}
+            >
               <Link
                 href="/catalogo"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3.5 rounded-xl shadow-lg shadow-emerald-950/30 transition transform hover:-translate-y-0.5"
               >
                 <Heart className="w-5 h-5 fill-slate-950" />
-                <span>Ver Catálogo de Adopciones</span>
+                <span>{heroSettings.button1Text || "Ver Catálogo de Adopciones"}</span>
               </Link>
               <Link
                 href="#reportar-caso"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-rose-600/90 hover:bg-rose-600 text-white font-semibold px-6 py-3.5 rounded-xl border border-rose-500/40 transition"
               >
                 <AlertTriangle className="w-5 h-5" />
-                <span>Reportar Perrito en Riesgo</span>
+                <span>{heroSettings.button2Text || "Reportar Perrito en Riesgo"}</span>
               </Link>
             </div>
 
-            <div className="pt-4 flex items-center justify-center lg:justify-start gap-6 text-xs text-emerald-200/80">
+            <div
+              className={`pt-4 flex items-center gap-6 text-xs text-emerald-200/80 ${
+                heroSettings.textAlignment === "center"
+                  ? "justify-center"
+                  : "justify-center lg:justify-start"
+              }`}
+            >
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Fichas médicas al día
               </span>
@@ -195,7 +309,7 @@ export default function HomePage() {
                 <Dog className="w-6 h-6" />
               </div>
               <p className="text-4xl font-black text-emerald-700">
-                {stats.find((s) => s.key === "rescues_count")?.value || 184}
+                {(Array.isArray(stats) ? stats.find((s) => s.key === "rescues_count")?.value : null) || 510}
               </p>
               <p className="font-bold text-slate-800 mt-1">Perros Rescatados</p>
               <p className="text-xs text-slate-500 mt-1">Retirados de situaciones de maltrato o peligro</p>
@@ -207,7 +321,7 @@ export default function HomePage() {
                 <Heart className="w-6 h-6 fill-white" />
               </div>
               <p className="text-4xl font-black text-amber-600">
-                {stats.find((s) => s.key === "adoptions_count")?.value || 146}
+                {(Array.isArray(stats) ? stats.find((s) => s.key === "adoptions_count")?.value : null) || 260}
               </p>
               <p className="font-bold text-slate-800 mt-1">Adopciones Integradas</p>
               <p className="text-xs text-slate-500 mt-1">Hogares amorosos verificados con seguimiento</p>
@@ -219,7 +333,7 @@ export default function HomePage() {
                 <Sparkles className="w-6 h-6" />
               </div>
               <p className="text-4xl font-black text-blue-700">
-                {stats.find((s) => s.key === "sterilizations_count")?.value || 310}
+                {(Array.isArray(stats) ? stats.find((s) => s.key === "sterilizations_count")?.value : null) || 1020}
               </p>
               <p className="font-bold text-slate-800 mt-1">Esterilizaciones</p>
               <p className="text-xs text-slate-500 mt-1">Frenando la sobrepoblación en la comunidad</p>
@@ -492,9 +606,77 @@ export default function HomePage() {
                 </div>
               </div>
 
+              {/* SUBIDA DE FOTOS DEL PERRITO EN RIESGO O UBICACIÓN */}
+              <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200/80 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                      <Camera className="w-4 h-4 text-rose-600" />
+                      <span>Fotografías del Perrito o del Lugar (Recomendado)</span>
+                    </label>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      Sube una o varias fotos para que nuestro equipo de rescate pueda identificar al perrito y ver su estado.
+                    </p>
+                  </div>
+
+                  <label className="inline-flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer shrink-0">
+                    <Upload className="w-3.5 h-3.5 text-amber-300" />
+                    <span>
+                      {uploadingCasePhoto
+                        ? "Subiendo foto..."
+                        : "Subir Foto desde Celular / PC"}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={uploadingCasePhoto}
+                      onChange={handleCasePhotoUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {casePhotoError && (
+                  <p className="text-xs font-bold text-rose-700 bg-rose-100 px-3 py-2 rounded-xl">
+                    {casePhotoError}
+                  </p>
+                )}
+
+                {casePhotos.length > 0 && (
+                  <div className="flex flex-wrap gap-3 pt-1">
+                    {casePhotos.map((url, idx) => (
+                      <div
+                        key={idx}
+                        className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-rose-300 bg-white shadow-xs group"
+                      >
+                        <img
+                          src={url}
+                          alt={`Evidencia ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCasePhotos((prev) =>
+                              prev.filter((_, i) => i !== idx)
+                            )
+                          }
+                          aria-label="Quitar foto"
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center transition cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button
                 type="submit"
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm"
+                disabled={uploadingCasePhoto}
+                className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>Enviar Reporte a Rescate DOG Rescue</span>

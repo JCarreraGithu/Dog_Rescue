@@ -6,12 +6,13 @@ import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { getLocalApplications } from "@/lib/local-records";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const respuesta = (value: boolean | null) =>
-  value === null ? "________________" : value ? "Sí" : "No";
+const respuesta = (value: boolean | null | undefined) =>
+  value === null || value === undefined ? "________________" : value ? "Sí" : "No";
 
 export async function GET(
   _request: Request,
@@ -25,15 +26,29 @@ export async function GET(
     }
 
     const { id } = await context.params;
-    const application = await prisma.adoptionApplication.findUnique({
-      where: { id },
-      include: { dog: { select: { name: true } } },
-    });
-    if (!application) {
-      return NextResponse.json({ error: "Solicitud no encontrada" }, { status: 404 });
+    const localApps = await getLocalApplications();
+    let application: any = localApps.find((a) => a.id === id);
+
+    if (!application && process.env.DATABASE_URL) {
+      application = await prisma.adoptionApplication.findUnique({
+        where: { id },
+        include: { dog: { select: { name: true } } },
+      });
     }
 
-    const templatePath = path.join(process.cwd(), "src", "templates", "Plantilla_Adopcion_DOG_Rescue.docx");
+    if (!application) {
+      return NextResponse.json(
+        { error: "Solicitud no encontrada" },
+        { status: 404 }
+      );
+    }
+
+    const templatePath = path.join(
+      process.cwd(),
+      "src",
+      "templates",
+      "Plantilla_Adopcion_DOG_Rescue.docx"
+    );
     const templateBytes = await readFile(templatePath);
     const doc = new Docxtemplater(new PizZip(templateBytes), {
       delimiters: { start: "{{", end: "}}" },
@@ -56,18 +71,30 @@ export async function GET(
       esterilizacion: respuesta(application.commitsToSterilize),
     });
 
-    const buffer = doc.getZip().generate({ type: "nodebuffer", compression: "DEFLATE" });
+    const buffer = doc
+      .getZip()
+      .generate({ type: "nodebuffer", compression: "DEFLATE" });
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="adopcion-${id.slice(0, 8)}.docx"`,
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "Content-Disposition": `attachment; filename="adopcion-${id.slice(
+          0,
+          8
+        )}.docx"`,
         "Cache-Control": "private, no-store, max-age=0",
         "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error) {
-    console.error("Error generando Word de adopción:", error instanceof Error ? error.name : "desconocido");
-    return NextResponse.json({ error: "No se pudo generar el Word" }, { status: 500 });
+    console.error(
+      "Error generando Word de adopción:",
+      error instanceof Error ? error.name : "desconocido"
+    );
+    return NextResponse.json(
+      { error: "No se pudo generar el Word" },
+      { status: 500 }
+    );
   }
 }

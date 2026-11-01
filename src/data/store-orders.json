@@ -1,0 +1,67 @@
+[
+  {
+    "id": "PED-788866",
+    "customerName": "castro555",
+    "customerPhone": "y5675675675",
+    "deliveryMethod": "Recoger en Sede",
+    "department": "Amatitlán",
+    "shippingAddress": "Recoger en Sede / Jornada (Amatitlán)",
+    "shippingFee": 0,
+    "paymentMethod": "Efectivo Contra Entrega",
+    "paymentReference": "",
+    "paymentStatus": "Pendiente",
+    "trackingNumber": "",
+    "adminNotes": "",
+    "note": "",
+    "items": [
+      {
+        "id": "playera-oficial-guardianes",
+        "name": "Playera Oficial \"Guardianes de Amatitlán\"",
+        "size": "Talla: S",
+        "price": 110,
+        "qty": 1
+      }
+    ],
+    "subtotal": 110,
+    "total": 110,
+    "status": "Pendiente",
+    "createdAt": "2026-10-29T01:19:48.866Z"
+  },
+  {
+    "id": "pedido-1793178750753",
+    "customerName": "erico castro",
+    "customerPhone": "456546564",
+    "note": "trerterter",
+    "items": [
+      {
+        "id": "playera-oficial-guardianes",
+        "name": "Playera Oficial \"Guardianes de Amatitlán\"",
+        "size": "Talla: S",
+        "price": 110,
+        "qty": 1
+      }
+    ],
+    "total": 110,
+    "status": "Pendiente",
+    "createdAt": "2026-10-28T09:12:30.753Z",
+    "paymentStatus": "Verificado"
+  },
+  {
+    "id": "pedido-1793178503613",
+    "customerName": "Cliente Solidario",
+    "customerPhone": "",
+    "note": "",
+    "items": [
+      {
+        "id": "playera-adopta-no-compres",
+        "name": "Playera Edición Especial \"Adopta un Amigo\"",
+        "size": "Talla: S",
+        "price": 120,
+        "qty": 1
+      }
+    ],
+    "total": 120,
+    "status": "Pendiente",
+    "createdAt": "2026-10-28T09:08:23.613Z"
+  }
+]

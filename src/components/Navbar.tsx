@@ -1,8 +1,7 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Dog,
   Heart,
@@ -13,8 +12,6 @@ import {
   ShoppingBag,
   Menu,
   X,
-  LayoutDashboard,
-  LogOut,
 } from "lucide-react";
 import { useCart } from "@/components/CartProvider";
 
@@ -22,6 +19,7 @@ const LINKS = [
   { href: "/", label: "Inicio", icon: null, color: "" },
   { href: "/catalogo", label: "Adopciones", icon: Dog, color: "text-amber-500" },
   { href: "/conocenos", label: "Conócenos", icon: Users, color: "text-sky-500" },
+  { href: "/tienda", label: "Tienda", icon: ShoppingBag, color: "text-amber-500" },
   { href: "/apoyanos", label: "Apóyanos", icon: Heart, color: "text-rose-500" },
   { href: "/#transparencia", label: "Transparencia", icon: Shield, color: "text-sky-500" },
   { href: "/#voluntariado", label: "Voluntariado", icon: Calendar, color: "text-blue-500" },
@@ -29,94 +27,57 @@ const LINKS = [
 ];
 
 export default function Navbar() {
-  const router = useRouter();
   const { count, openCart } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isStaff, setIsStaff] = useState(false);
-
-  // Solo el personal con sesión iniciada ve los accesos al panel.
-  // Para el público NO existe ningún botón hacia /admin.
-  useEffect(() => {
-    fetch("/api/auth/session")
-      .then((r) => r.json())
-      .then((d) => setIsStaff(Boolean(d.admin)))
-      .catch(() => {});
-  }, []);
-
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    setIsStaff(false);
-    setMenuOpen(false);
-    router.push("/");
-    router.refresh();
-  };
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
-         
-{/* Logo oficial y nombre del refugio */}
-<Link
-  href="/"
-  className="flex items-center gap-3 group shrink-0"
-  aria-label="DOG Rescue Guatemala - Ir al inicio"
->
-  <div className="w-12 h-12 shrink-0 flex items-center justify-center">
-    <Image
-      src="/logo-refugio.jpg"
-      alt="Logo oficial DOG Rescue Guatemala"
-      width={48}
-      height={48}
-      priority
-      className="w-12 h-12 object-contain"
-    />
-  </div>
+          {/* Logo oficial y nombre del refugio */}
+          <Link
+            href="/"
+            className="flex items-center gap-3 group shrink-0"
+            aria-label="DOG Rescue Guatemala - Ir al inicio"
+          >
+            <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+              <Image
+                src="/logo-refugio.jpg"
+                alt="Logo oficial DOG Rescue Guatemala"
+                width={48}
+                height={48}
+                priority
+                className="w-12 h-12 object-contain"
+              />
+            </div>
 
-  <div className="flex flex-col justify-center">
-    <span className="font-extrabold text-lg text-slate-800 tracking-tight whitespace-nowrap leading-tight">
-      DOG Rescue{" "}
-      <span className="text-sky-500">Guatemala</span>
-    </span>
+            <div className="flex flex-col justify-center">
+              <span className="font-extrabold text-lg text-slate-800 tracking-tight whitespace-nowrap leading-tight">
+                DOG Rescue <span className="text-sky-500">Guatemala</span>
+              </span>
 
-    <span className="text-xs text-slate-500 font-medium">
-      Refugio Amatitlán
-    </span>
-  </div>
-</Link>
+              <span className="text-xs text-slate-500 font-medium">
+                Refugio Amatitlán
+              </span>
+            </div>
+          </Link>
 
           {/* Nav Links (escritorio) */}
-          <nav className="hidden lg:flex items-center gap-5 text-sm font-medium text-slate-600">
+          <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 text-sm font-medium text-slate-600">
             {LINKS.map(({ href, label, icon: Icon, color }) => (
-              <Link key={href} href={href} className="hover:text-emerald-600 transition flex items-center gap-1.5 whitespace-nowrap">
+              <Link
+                key={href}
+                href={href}
+                className="hover:text-emerald-600 transition flex items-center gap-1.5 whitespace-nowrap"
+              >
                 {Icon && <Icon className={`w-4 h-4 hidden xl:block ${color}`} />}
                 {label}
               </Link>
             ))}
           </nav>
 
-          {/* Acciones */}
+          {/* Acciones públicas */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {isStaff && (
-              <>
-                <Link
-                  href="/admin"
-                  className="hidden sm:inline-flex items-center gap-2 text-xs sm:text-sm font-medium px-3 py-2 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
-                >
-                  <LayoutDashboard className="w-4 h-4 text-slate-600" />
-                  <span>Panel</span>
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  aria-label="Cerrar sesión"
-                  title="Cerrar sesión"
-                  className="hidden sm:inline-flex p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </>
-            )}
-
             <button
               onClick={openCart}
               aria-label="Ver mi pedido"
@@ -172,23 +133,6 @@ export default function Navbar() {
             <Heart className="w-4 h-4 fill-white" />
             Adoptar Ahora
           </Link>
-          {isStaff && (
-            <div className="flex gap-2 pt-2">
-              <Link
-                href="/admin"
-                onClick={() => setMenuOpen(false)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 bg-slate-100"
-              >
-                <LayoutDashboard className="w-4 h-4" /> Panel
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 bg-slate-100"
-              >
-                <LogOut className="w-4 h-4" /> Salir
-              </button>
-            </div>
-          )}
         </nav>
       )}
     </header>
