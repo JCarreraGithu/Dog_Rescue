@@ -18,7 +18,7 @@ import { AdminNotification } from "@/lib/notifications";
 type Props = {
   notifications: AdminNotification[];
   onRefresh: () => void;
-  onNavigateTab: (tab: any) => void;
+  onNavigateTab: (tab: AdminNotification["targetTab"]) => void;
 };
 
 export default function NotificationsCenter({

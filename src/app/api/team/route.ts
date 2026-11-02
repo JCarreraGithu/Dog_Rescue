@@ -1,3 +1,4 @@
+import { staffUnavailable } from "@/lib/staff-response";
 import { NextResponse } from "next/server";
 import { isRole, validatePassword } from "@/lib/permissions";
 import {
@@ -10,7 +11,6 @@ import {
   newUserId,
   normalizeEmail,
   toPublicUser,
-  writeAudit,
 } from "@/lib/staff-store";
 
 // Gestión del equipo: SOLO administrador total (se valida aquí y en el middleware).
@@ -20,7 +20,7 @@ async function requireSuperadmin(request: Request) {
   return user;
 }
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   if (!(await requireSuperadmin(request))) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   return NextResponse.json(users.map(toPublicUser));
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const actor = await requireSuperadmin(request);
   if (!actor) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
@@ -65,15 +65,18 @@ export async function POST(request: Request) {
     };
     users.push(user);
     return user;
-  });
+  }, { actor, superadmin: true, audit: (user) => user ? ({ actor: actor.email, actorName: actor.name, action: "Usuario creado", detail: `${email} (${role})`, ip: getClientIp(request) }) : null });
 
   if (!result) return NextResponse.json({ error: "Ya existe un usuario con ese correo." }, { status: 409 });
-  await writeAudit({
-    actor: actor.email,
-    actorName: actor.name,
-    action: "Usuario creado",
-    detail: `${email} (${role})`,
-    ip: getClientIp(request),
-  });
   return NextResponse.json(toPublicUser(result), { status: 201 });
+}
+
+export async function GET(request: Request) {
+  try { return await handleGET(request); }
+  catch { return staffUnavailable(); }
+}
+
+export async function POST(request: Request) {
+  try { return await handlePOST(request); }
+  catch { return staffUnavailable(); }
 }

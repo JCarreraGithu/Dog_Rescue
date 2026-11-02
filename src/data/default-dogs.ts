@@ -1,3 +1,5 @@
+import type { AdoptionView, MedicalRecordView } from "@/lib/view-types";
+
 export type DemoDog = {
   id: string;
   name: string;
@@ -12,8 +14,8 @@ export type DemoDog = {
   healthNotes: string;
   photoUrl: string;
   isSterilized: boolean;
-  medicalRecords: any[];
-  applications?: any[];
+  medicalRecords: MedicalRecordView[];
+  applications?: AdoptionView[];
 };
 
 export const DEFAULT_DOGS: DemoDog[] = [

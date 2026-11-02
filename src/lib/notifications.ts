@@ -22,7 +22,7 @@ export type AdminNotification = {
     | "notifications";
   read: boolean;
   createdAt: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 };
 
 const NOTIFICATIONS_FILE = path.join(
@@ -61,7 +61,7 @@ export async function addNotification(input: {
   title: string;
   message: string;
   targetTab: AdminNotification["targetTab"];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }): Promise<AdminNotification> {
   const list = await getNotifications();
   const newNotif: AdminNotification = {

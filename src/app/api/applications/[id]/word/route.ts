@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+import type { LocalAdoptionApplication } from "@/lib/local-records";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { readFile } from "node:fs/promises";
@@ -5,7 +7,8 @@ import path from "node:path";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import { prisma } from "@/lib/db";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken } from "@/lib/staff-store";
 import { getLocalApplications } from "@/lib/local-records";
 
 export const runtime = "nodejs";
@@ -21,13 +24,13 @@ export async function GET(
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE)?.value;
-    if (!(await verifySessionToken(token))) {
+    if (!(await getUserFromToken(token))) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
     const { id } = await context.params;
     const localApps = await getLocalApplications();
-    let application: any = localApps.find((a) => a.id === id);
+    let application: LocalAdoptionApplication | Prisma.AdoptionApplicationGetPayload<{ include: { dog: { select: { name: true } } } }> | null | undefined = localApps.find((a) => a.id === id);
 
     if (!application && process.env.DATABASE_URL) {
       application = await prisma.adoptionApplication.findUnique({

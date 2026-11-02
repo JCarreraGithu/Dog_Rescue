@@ -1,13 +1,16 @@
+import type { Prisma } from "@prisma/client";
+import type { MedicalRecordView } from "@/lib/view-types";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken } from "@/lib/staff-store";
 import { getLocalDogs, saveLocalDogs } from "@/lib/local-records";
 
 async function isAdminAuthenticated() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return verifySessionToken(token);
+  return getUserFromToken(token);
 }
 
 // EDITAR, COMPLETAR O CANCELAR UNA CITA
@@ -24,11 +27,11 @@ export async function PATCH(
     const body = await request.json();
 
     const localDogs = await getLocalDogs();
-    let updatedLocalRecord: any = null;
+    let updatedLocalRecord: MedicalRecordView | null = null;
 
     for (const dog of localDogs) {
       if (Array.isArray(dog.medicalRecords)) {
-        const recIdx = dog.medicalRecords.findIndex((r: any) => r.id === id);
+        const recIdx = dog.medicalRecords.findIndex((r) => r.id === id);
         if (recIdx !== -1) {
           dog.medicalRecords[recIdx] = {
             ...dog.medicalRecords[recIdx],
@@ -48,7 +51,7 @@ export async function PATCH(
 
     if (process.env.DATABASE_URL) {
       try {
-        const data: any = {};
+        const data: Prisma.MedicalRecordUpdateInput = {};
         if (body.type !== undefined) data.type = body.type;
         if (body.title !== undefined) data.title = body.title;
         if (body.description !== undefined) data.description = body.description;

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken } from "@/lib/staff-store";
 import { DEFAULT_DOGS } from "@/data/default-dogs";
 import {
   getLocalApplications,
@@ -13,7 +14,7 @@ import { addNotification } from "@/lib/notifications";
 async function isAdminAuthenticated() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return verifySessionToken(token);
+  return getUserFromToken(token);
 }
 
 // Solo administradores pueden consultar solicitudes

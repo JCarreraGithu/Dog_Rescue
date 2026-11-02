@@ -37,7 +37,7 @@ export default function ApoyanosPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
   useEffect(() => {
-    fetch("/api/inventory")
+    fetch("/api/donation-needs")
       .then(async (res) => { if (!res.ok) throw new Error("Inventario no disponible"); return res.json(); })
       .then((data) => { if (!Array.isArray(data)) throw new Error("Formato inválido"); setItems(data); setStatus("ok"); })
       .catch(() => setStatus("error"));

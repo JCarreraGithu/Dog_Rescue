@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     const note = typeof body.note === "string" ? body.note.trim() : "";
 
-    const cleanItems = items.map((item: any) => ({
+    const cleanItems = items.map((item: Record<string, unknown>) => ({
       id: String(item.id || ""),
       name: String(item.name || "Producto"),
       size: typeof item.size === "string" ? item.size : undefined,
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     }));
 
     const subtotal = cleanItems.reduce(
-      (acc: number, item: any) => acc + item.price * item.qty,
+      (acc: number, item: { price: number; qty: number }) => acc + item.price * item.qty,
       0
     );
 
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
     const itemsSummary = cleanItems
       .map(
-        (i: any) => `${i.qty}x ${i.name}${i.size ? ` (${i.size})` : ""}`
+        (i: { qty: number; name: string; size?: string }) => `${i.qty}x ${i.name}${i.size ? ` (${i.size})` : ""}`
       )
       .join(", ");
 

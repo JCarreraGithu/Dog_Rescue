@@ -68,7 +68,7 @@ export async function POST(request: Request) {
         photos.length > 0 ? ` (${photos.length} foto${photos.length > 1 ? "s" : ""})` : ""
       }`,
       message: `${newReport.reporterName} (Tel: ${newReport.reporterPhone}) reportó en "${newReport.locationAddress}": ${newReport.description}`,
-      targetTab: "case-reports" as any,
+      targetTab: "case-reports",
       metadata: {
         reportId: newReport.id,
         photoUrl: mainPhoto,
@@ -95,9 +95,9 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(newReport, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: "Error al enviar el reporte de caso", details: error.message },
+      { error: "Error al enviar el reporte de caso", details: error instanceof Error ? error.message : "Error desconocido" },
       { status: 500 }
     );
   }

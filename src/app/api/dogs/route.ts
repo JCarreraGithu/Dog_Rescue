@@ -1,14 +1,16 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken } from "@/lib/staff-store";
 import { getLocalDogs, saveLocalDogs, LocalDog } from "@/lib/local-records";
 
 // Verificar sesión administrativa
 async function isAdminAuthenticated() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return verifySessionToken(token);
+  return getUserFromToken(token);
 }
 
 function filterDogsList(dogs: LocalDog[], searchParams: URLSearchParams) {
@@ -55,7 +57,7 @@ export async function GET(request: Request) {
     const temperament = searchParams.get("temperament");
     const status = searchParams.get("status");
 
-    const whereClause: any = {
+    const whereClause: Prisma.DogWhereInput = {
       isDeleted: deletedOnly,
     };
 

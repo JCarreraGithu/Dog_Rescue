@@ -1,6 +1,9 @@
+import type { Volunteer } from "@prisma/client";
+import type { VolunteerView } from "@/lib/view-types";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken } from "@/lib/staff-store";
 import { cookies } from "next/headers";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -18,12 +21,12 @@ export async function GET(
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE)?.value;
-    if (!token || !(await verifySessionToken(token))) {
+    if (!token || !(await getUserFromToken(token))) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
     const { id } = await context.params;
     const localVols = await getLocalVolunteers();
-    let vol: any = localVols.find((v) => v.id === id);
+    let vol: VolunteerView | Volunteer | null | undefined = localVols.find((v) => v.id === id);
 
     if (!vol && process.env.DATABASE_URL) {
       vol = await prisma.volunteer.findUnique({ where: { id } });

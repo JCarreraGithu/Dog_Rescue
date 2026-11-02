@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { DEFAULT_DOGS, DemoDog } from "@/data/default-dogs";
+import type { VolunteerView, CaseReportView } from "@/lib/view-types";
 
 const DATA_DIR = path.join(process.cwd(), "src", "data");
 
@@ -249,14 +250,14 @@ export const saveStoreOrders = (list: StoreOrder[]) =>
 
 // 3. SOLICITUDES DE VOLUNTARIADO
 export const getLocalVolunteers = () =>
-  readJsonArray<any>("volunteers.json");
+  readJsonArray<VolunteerView>("volunteers.json");
 
-export const saveLocalVolunteers = (list: any[]) =>
+export const saveLocalVolunteers = (list: VolunteerView[]) =>
   writeJsonArray("volunteers.json", list);
 
 // 4. REPORTES DE PERRITOS EN RIESGO
 export const getLocalCaseReports = () =>
-  readJsonArray<any>("case-reports.json");
+  readJsonArray<CaseReportView>("case-reports.json");
 
-export const saveLocalCaseReports = (list: any[]) =>
+export const saveLocalCaseReports = (list: CaseReportView[]) =>
   writeJsonArray("case-reports.json", list);

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { CartProvider } from "@/components/CartProvider";
 import PublicShell from "@/components/PublicShell";
+import { getLoginPath } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Refugio DOG Rescue Guatemala | Amatitlán",
@@ -17,7 +18,7 @@ export default function RootLayout({
     <html lang="es" className="scroll-smooth">
       <body className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
         <CartProvider>
-          <PublicShell>{children}</PublicShell>
+          <PublicShell loginPath={getLoginPath()}>{children}</PublicShell>
         </CartProvider>
       </body>
     </html>

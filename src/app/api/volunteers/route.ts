@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken } from "@/lib/staff-store";
 import { cookies } from "next/headers";
 import { getLocalVolunteers, saveLocalVolunteers } from "@/lib/local-records";
 import { addNotification } from "@/lib/notifications";
@@ -8,7 +9,7 @@ import { addNotification } from "@/lib/notifications";
 async function isAdmin() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return !!token && !!(await verifySessionToken(token));
+  return !!token && !!(await getUserFromToken(token));
 }
 
 // Solo los administradores pueden consultar las solicitudes.

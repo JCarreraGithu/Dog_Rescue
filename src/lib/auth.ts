@@ -6,10 +6,7 @@
 //
 // Variables de entorno:
 //   AUTH_SECRET          -> texto largo y aleatorio (32+ caracteres) para firmar las sesiones
-//   ADMIN_SUBDOMAIN      -> subdominio exclusivo para administración (por defecto "interno")
-//   ADMIN_ALLOWED_HOSTS  -> lista opcional separada por comas de dominios internos adicionales
-//   ADMIN_LOGIN_PATH     -> ruta secreta del login (por defecto /portal-interno)
-//   ADMIN_EMAIL / ADMIN_PASSWORD -> solo se usan UNA vez para crear el primer superadmin
+//   ADMIN_LOGIN_PATH     -> alias del login (por defecto /portal-interno)
 
 export const SESSION_COOKIE = "refugio_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8; // 8 horas
@@ -46,38 +43,7 @@ export function isAuthConfigured(): boolean {
   return Boolean(secret && secret.length >= 32 && !secret.includes("pega-aqui"));
 }
 
-/** Subdominio exclusivo del panel (ej. "interno" -> interno.localhost:3000 o interno.tudominio.org). */
-export function getAdminSubdomain(): string {
-  const raw = (process.env.ADMIN_SUBDOMAIN || "interno").trim().toLowerCase();
-  return raw.replace(/[^a-z0-9-]/g, "") || "interno";
-}
-
-/**
- * Verifica si la petición entra por el subdominio exclusivo de administración.
- * En el dominio público (ej. localhost:3000 o www.tudominio.org) devuelve false,
- * apagando por completo el login, el panel y las APIs administrativas.
- */
-export function isAdminHost(hostHeader: string | null | undefined): boolean {
-  if (!hostHeader) return false;
-  const cleanHost = hostHeader.trim().toLowerCase();
-  const hostnameOnly = cleanHost.split(":")[0];
-  const sub = getAdminSubdomain();
-
-  // 1. Subdominio directo: interno.localhost, interno.tudominio.org, etc.
-  if (hostnameOnly.startsWith(`${sub}.`)) {
-    return true;
-  }
-
-  // 2. Dominios internos explícitamente autorizados en ADMIN_ALLOWED_HOSTS
-  const extra = (process.env.ADMIN_ALLOWED_HOSTS || "")
-    .split(",")
-    .map((h) => h.trim().toLowerCase())
-    .filter(Boolean);
-
-  return extra.some((allowed) => cleanHost === allowed || hostnameOnly === allowed);
-}
-
-/** Ruta secreta del login (siempre empieza con "/"). */
+/** Alias del login (siempre empieza con "/"). */
 export function getLoginPath(): string {
   const raw = (process.env.ADMIN_LOGIN_PATH || "/portal-interno").trim();
   const normalized = "/" + raw.replace(/^\/+|\/+$/g, "");

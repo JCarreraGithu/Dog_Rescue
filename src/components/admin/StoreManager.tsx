@@ -1,4 +1,5 @@
 "use client";
+import type { StoreOrder } from "@/lib/local-records";
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
@@ -107,10 +108,10 @@ export default function StoreManager() {
   const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [orderDeliveryFilter, setOrderDeliveryFilter] = useState<string>("Todos");
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
-  const [orderEditForm, setOrderEditForm] = useState({
+  const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
+  const [orderEditForm, setOrderEditForm] = useState<Pick<StoreOrder, "status" | "paymentStatus" | "trackingNumber" | "department" | "shippingAddress" | "adminNotes">>({
     status: "Pendiente",
     paymentStatus: "Pendiente",
     trackingNumber: "",
@@ -131,7 +132,7 @@ export default function StoreManager() {
     }
   };
 
-  const openOrderModal = (order: any) => {
+  const openOrderModal = (order: StoreOrder) => {
     setSelectedOrder(order);
     setOrderEditForm({
       status: order.status || "Pendiente",
@@ -143,7 +144,7 @@ export default function StoreManager() {
     });
   };
 
-  const handleUpdateOrder = async (orderId: string, patch: Record<string, any>) => {
+  const handleUpdateOrder = async (orderId: string, patch: Partial<StoreOrder>) => {
     try {
       const res = await fetch("/api/orders", {
         method: "PUT",
@@ -155,7 +156,7 @@ export default function StoreManager() {
         if (Array.isArray(data.orders)) {
           setOrders(data.orders);
           if (selectedOrder && selectedOrder.id === orderId) {
-            const updated = data.orders.find((o: any) => o.id === orderId);
+            const updated = data.orders.find((o: StoreOrder) => o.id === orderId);
             if (updated) setSelectedOrder(updated);
           }
         } else {
@@ -184,12 +185,12 @@ export default function StoreManager() {
     }
   };
 
-  const buildCustomerWhatsApp = (order: any) => {
+  const buildCustomerWhatsApp = (order: StoreOrder) => {
     const cleanPhone = String(order.customerPhone || "").replace(/[^0-9]/g, "");
     const gtPhone =
       cleanPhone.length === 8 ? `502${cleanPhone}` : cleanPhone;
     const itemsText = (order.items || [])
-      .map((i: any) => `${i.qty}x ${i.name}${i.size ? ` (${i.size})` : ""}`)
+      .map((i) => `${i.qty}x ${i.name}${i.size ? ` (${i.size})` : ""}`)
       .join(", ");
 
     const msg =
@@ -609,7 +610,7 @@ export default function StoreManager() {
                           1. Productos Solicitados
                         </span>
                         <ul className="space-y-1 font-semibold text-slate-800">
-                          {(order.items || []).map((i: any, idx: number) => (
+                          {(order.items || []).map((i, idx: number) => (
                             <li key={idx}>
                               • {i.qty}x {i.name}{" "}
                               {i.size ? (
@@ -754,7 +755,7 @@ export default function StoreManager() {
                             key={st}
                             type="button"
                             onClick={() =>
-                              handleUpdateOrder(order.id, { status: st })
+                              handleUpdateOrder(order.id, { status: st as StoreOrder["status"] })
                             }
                             className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
                               order.status === st
@@ -1377,7 +1378,7 @@ export default function StoreManager() {
                     onChange={(e) =>
                       setOrderEditForm({
                         ...orderEditForm,
-                        status: e.target.value,
+                        status: e.target.value as StoreOrder["status"],
                       })
                     }
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm bg-white font-bold"
@@ -1404,7 +1405,7 @@ export default function StoreManager() {
                     onChange={(e) =>
                       setOrderEditForm({
                         ...orderEditForm,
-                        paymentStatus: e.target.value,
+                        paymentStatus: e.target.value as StoreOrder["paymentStatus"],
                       })
                     }
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm bg-white font-bold"

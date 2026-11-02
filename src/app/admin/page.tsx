@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { LocalDog } from "@/lib/local-records";
+import type { AdoptionView, VolunteerView, InventoryView, CaseReportView, TransparencyView, AdminTab, MedicalRecordView } from "@/lib/view-types";
+import type { AdminNotification } from "@/lib/notifications";
+import type { LucideIcon } from "lucide-react";
+type Appointment = MedicalRecordView & { dogId: string; dogName: string };
 import Link from "next/link";
 import {
   Dog,
@@ -50,9 +55,7 @@ import ChangePasswordModal from "@/components/admin/ChangePasswordModal";
 import { ROLE_LABELS, Role } from "@/lib/permissions";
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<
-    "notifications" | "dogs" | "case-reports" | "agenda" | "applications" | "inventory" | "volunteers" | "store" | "special-cases" | "hero-settings" | "transparency" | "reports" | "team" | "audit"
-  >("dogs");
+  const [activeTab, setActiveTab] = useState<AdminTab>("dogs");
 
   // Sesión del personal (rol, cambio de contraseña obligatorio)
   const [staffUser, setStaffUser] = useState<{
@@ -89,11 +92,11 @@ export default function AdminPage() {
   const [transparencySaved, setTransparencySaved] = useState(false);
 
   // Estados de datos
-  const [dogs, setDogs] = useState<any[]>([]);
-  const [deletedDogs, setDeletedDogs] = useState<any[]>([]);
+  const [dogs, setDogs] = useState<LocalDog[]>([]);
+  const [deletedDogs, setDeletedDogs] = useState<LocalDog[]>([]);
   const [dogsSubView, setDogsSubView] = useState<"activos" | "documentacion" | "papelera">("activos");
   const [documentationDog, setDocumentationDog] = useState<{ id: string; name: string } | null>(null);
-  const [editingFullDog, setEditingFullDog] = useState<any | null>(null);
+  const [editingFullDog, setEditingFullDog] = useState<LocalDog | null>(null);
   const [uploadingDogPhoto, setUploadingDogPhoto] = useState(false);
   const [busyDogId, setBusyDogId] = useState<string | null>(null);
   const [dogActionFeedback, setDogActionFeedback] = useState<{
@@ -106,23 +109,23 @@ export default function AdminPage() {
     id: string;
     name: string;
   } | null>(null);
-  const [applications, setApplications] = useState<any[]>([]);
-  const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
+  const [applications, setApplications] = useState<AdoptionView[]>([]);
+  const [selectedApplication, setSelectedApplication] = useState<AdoptionView | null>(null);
   const [downloadingApplicationId, setDownloadingApplicationId] = useState<string | null>(null);
   const [applicationError, setApplicationError] = useState("");
 
-  const [inventory, setInventory] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<InventoryView[]>([]);
   const [deletingInventoryId, setDeletingInventoryId] = useState<string | null>(null);
-  const [volunteers, setVolunteers] = useState<any[]>([]);
-  const [selectedVolunteer, setSelectedVolunteer] = useState<any | null>(null);
+  const [volunteers, setVolunteers] = useState<VolunteerView[]>([]);
+  const [selectedVolunteer, setSelectedVolunteer] = useState<VolunteerView | null>(null);
   const [volunteerError, setVolunteerError] = useState("");
   const [downloadingVolunteerId, setDownloadingVolunteerId] = useState<string | null>(null);
   const [volunteerBusy, setVolunteerBusy] = useState(false);
-  const [caseReports, setCaseReports] = useState<any[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [caseReports, setCaseReports] = useState<CaseReportView[]>([]);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
 
   // Filtro y selecciones
-  const [selectedDog, setSelectedDog] = useState<any | null>(null);
+  const [selectedDog, setSelectedDog] = useState<LocalDog | null>(null);
   // Estados para editar el expediente canino
 const [isEditingDog, setIsEditingDog] = useState(false);
 const [isSavingDog, setIsSavingDog] = useState(false);
@@ -190,21 +193,21 @@ const [dogEditForm, setDogEditForm] = useState({
   const [appointmentForm, setAppointmentForm] = useState(emptyAppointment);
 
   const allAppointments = dogs.flatMap((dog) =>
-    (dog.medicalRecords || []).map((record: any) => ({
+    (dog.medicalRecords || []).map((record) => ({
       ...record,
       dogName: dog.name,
       dogId: dog.id,
     }))
   );
   const visibleAppointments = allAppointments
-    .filter((record: any) =>
+    .filter((record) =>
       agendaView === "pendientes"
         ? record.status === "Programado" || record.status === "Pendiente"
         : agendaView === "historial"
         ? record.status === "Completado"
         : record.status === "Cancelado"
     )
-    .sort((a: any, b: any) =>
+    .sort((a, b) =>
       agendaView === "pendientes"
         ? new Date(a.date).getTime() - new Date(b.date).getTime()
         : new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -218,7 +221,7 @@ const [dogEditForm, setDogEditForm] = useState({
     setShowAppointmentModal(true);
   };
 
-  const openEditAppointment = (record: any) => {
+  const openEditAppointment = (record: Appointment) => {
     const date = new Date(record.date);
     const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
       .toISOString()
@@ -326,9 +329,9 @@ const [dogEditForm, setDogEditForm] = useState({
       if (Array.isArray(caseRes)) setCaseReports(caseRes);
       if (Array.isArray(notifRes)) setNotifications(notifRes);
       if (Array.isArray(transRes)) {
-        const rescues = transRes.find((s: any) => s.key === "rescues_count")?.value;
-        const adoptions = transRes.find((s: any) => s.key === "adoptions_count")?.value;
-        const sterilizations = transRes.find((s: any) => s.key === "sterilizations_count")?.value;
+        const rescues = transRes.find((s: TransparencyView) => s.key === "rescues_count")?.value;
+        const adoptions = transRes.find((s: TransparencyView) => s.key === "adoptions_count")?.value;
+        const sterilizations = transRes.find((s: TransparencyView) => s.key === "sterilizations_count")?.value;
         setTransparencyStats({
           rescues_count: rescues ?? 510,
           adoptions_count: adoptions ?? 260,
@@ -396,7 +399,7 @@ const [dogEditForm, setDogEditForm] = useState({
   };
 
   // Abrir modal de edición completa de expediente canino
-  const openFullDogEdit = (dog: any) => {
+  const openFullDogEdit = (dog: LocalDog) => {
     setEditingFullDog(dog);
     setDogEditForm({
       name: dog.name || "",
@@ -474,7 +477,7 @@ const [dogEditForm, setDogEditForm] = useState({
       const updatedDog = await res.json();
 
       if (selectedDog?.id === updatedDog.id) {
-        setSelectedDog((previous: any) => ({
+        setSelectedDog((previous) => ({
           ...previous,
           ...updatedDog,
         }));
@@ -741,7 +744,7 @@ const [dogEditForm, setDogEditForm] = useState({
       });
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result.error || "No se pudo actualizar la solicitud.");
-      setSelectedApplication((previous: any) => previous?.id === id ? { ...previous, ...result } : previous);
+      setSelectedApplication((previous) => previous?.id === id ? { ...previous, ...result } : previous);
       await loadAllData();
     } catch (error) {
       setApplicationError(error instanceof Error ? error.message : "Error al actualizar la solicitud.");
@@ -819,7 +822,7 @@ const [dogEditForm, setDogEditForm] = useState({
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || "No se pudo actualizar la solicitud.");
-      setSelectedVolunteer((previous: any) => previous?.id === id ? { ...previous, ...result } : previous);
+      setSelectedVolunteer((previous) => previous?.id === id ? { ...previous, ...result } : previous);
       await loadAllData();
     } catch (error) {
       setVolunteerError(error instanceof Error ? error.message : "Error al evaluar solicitud.");
@@ -919,7 +922,7 @@ const [dogEditForm, setDogEditForm] = useState({
                   { id: "audit", label: "Bitácora", icon: ScrollText },
                 ]
               : []),
-          ].map((tab: { id: string; label: string; icon: any; count?: number; alert?: number }) => {
+          ].map((tab: { id: string; label: string; icon: LucideIcon; count?: number; alert?: number }) => {
             const Icon = tab.icon;
             const isActive =
               tab.id === "dogs"
@@ -939,7 +942,7 @@ const [dogEditForm, setDogEditForm] = useState({
                     setActiveTab("dogs");
                     setDogsSubView("papelera");
                   } else {
-                    setActiveTab(tab.id as any);
+                    setActiveTab(tab.id as AdminTab);
                   }
                 }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer ${
@@ -1546,7 +1549,7 @@ const [dogEditForm, setDogEditForm] = useState({
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
-                  {tab.label} ({allAppointments.filter((record: any) =>
+                  {tab.label} ({allAppointments.filter((record) =>
                     tab.id === "pendientes"
                       ? ["Pendiente", "Programado"].includes(record.status)
                       : tab.id === "historial"
@@ -1561,7 +1564,7 @@ const [dogEditForm, setDogEditForm] = useState({
               {visibleAppointments.length === 0 ? (
                 <p className="text-sm text-slate-500 text-center py-8">No hay citas en esta sección.</p>
               ) : (
-                visibleAppointments.map((rec: any) => (
+                visibleAppointments.map((rec) => (
                   <div key={rec.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-200 bg-slate-50 gap-4">
                     <div className="flex items-start gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0 text-white">
@@ -2200,7 +2203,7 @@ const [dogEditForm, setDogEditForm] = useState({
                 </div>
 
                 <div className="space-y-2">
-                  {selectedDog.medicalRecords?.filter((m: any) => m.status === "Completado").map((m: any) => (
+                  {selectedDog.medicalRecords?.filter((m) => m.status === "Completado").map((m) => (
                     <div key={m.id} className="p-3 bg-white border border-slate-200 rounded-xl text-xs space-y-1">
                       <div className="flex justify-between font-bold text-slate-800">
                         <span>[{m.type}] {m.title}</span>

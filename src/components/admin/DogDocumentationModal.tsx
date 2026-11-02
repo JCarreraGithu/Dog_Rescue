@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { LocalDog } from "@/lib/local-records";
+import type { AdoptionView, CaseReportView } from "@/lib/view-types";
 import {
   X,
   CheckCircle2,
@@ -66,10 +68,10 @@ export default function DogDocumentationModal({
   const [activeStage, setActiveStage] = useState<
     "arrival" | "rehabilitation" | "adoption" | "print"
   >("arrival");
-  const [dog, setDog] = useState<any | null>(null);
+  const [dog, setDog] = useState<LocalDog | null>(null);
   const [doc, setDoc] = useState<DogDocumentation | null>(null);
-  const [dogApplications, setDogApplications] = useState<any[]>([]);
-  const [caseReports, setCaseReports] = useState<any[]>([]);
+  const [dogApplications, setDogApplications] = useState<AdoptionView[]>([]);
+  const [caseReports, setCaseReports] = useState<CaseReportView[]>([]);
   const [feedback, setFeedback] = useState<string>("");
 
   // Formulario para nuevo adjunto clínico en Etapa 2
@@ -465,7 +467,7 @@ export default function DogDocumentationModal({
                         ...doc,
                         arrival: {
                           ...doc.arrival,
-                          initialCondition: e.target.value as any,
+                          initialCondition: e.target.value as DogDocumentation["arrival"]["initialCondition"],
                         },
                       })
                     }
@@ -649,7 +651,7 @@ export default function DogDocumentationModal({
                   },
                 ].map((item) => {
                   const checked = Boolean(
-                    (doc.rehabilitation as any)[item.key]
+                    doc.rehabilitation[item.key as keyof DogDocumentation["rehabilitation"]]
                   );
                   return (
                     <label
@@ -780,7 +782,7 @@ export default function DogDocumentationModal({
                       onChange={(e) =>
                         setNewAttachment({
                           ...newAttachment,
-                          type: e.target.value as any,
+                          type: e.target.value as DogRehabAttachment["type"],
                         })
                       }
                       className="w-full px-2.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-900"
@@ -1225,7 +1227,7 @@ export default function DogDocumentationModal({
                       onChange={(e) =>
                         setNewFollowUp({
                           ...newFollowUp,
-                          period: e.target.value as any,
+                          period: e.target.value as DogAdoptionFollowUp["period"],
                         })
                       }
                       className="w-full px-2.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-900"
@@ -1245,7 +1247,7 @@ export default function DogDocumentationModal({
                       onChange={(e) =>
                         setNewFollowUp({
                           ...newFollowUp,
-                          status: e.target.value as any,
+                          status: e.target.value as DogAdoptionFollowUp["status"],
                         })
                       }
                       className="w-full px-2.5 py-2 rounded-lg border border-slate-300 bg-white text-slate-900"

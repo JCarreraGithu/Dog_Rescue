@@ -1,7 +1,8 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+let prisma;
 
 async function main() {
+  const { PrismaClient } = await import("@prisma/client");
+  prisma = new PrismaClient();
   console.log("Iniciando sembrado de datos en SQLite...");
 
   // 1. Transparencia

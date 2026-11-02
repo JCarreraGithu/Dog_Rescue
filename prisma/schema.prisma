@@ -145,3 +145,43 @@ model TransparencyStat {
   label     String
   updatedAt DateTime @updatedAt
 }
+
+enum StaffRole {
+  superadmin
+  editor
+  voluntario
+}
+
+model StaffUser {
+  id                 String    @id
+  name               String
+  email              String    @unique
+  role               StaffRole
+  passwordHash       String
+  active             Boolean
+  mustChangePassword Boolean
+  sessionVersion     Int
+  createdAt          DateTime  @db.Timestamptz(3)
+  lastLoginAt        DateTime? @db.Timestamptz(3)
+}
+
+// Snapshot del actor: el historial no depende de que su cuenta siga existiendo.
+model AuditLog {
+  id        String   @id @default(uuid())
+  at        DateTime @default(now()) @db.Timestamptz(3)
+  actor     String
+  actorName String?
+  action    String
+  detail    String?
+  ip        String?
+
+  @@index([at])
+}
+
+model LoginAttempt {
+  key       String   @id
+  count     Int
+  resetAt   DateTime @db.Timestamptz(3)
+
+  @@index([resetAt])
+}

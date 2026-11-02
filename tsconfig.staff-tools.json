@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "incremental": false,
+    "outDir": ".private-tools",
+    "rootDir": ".",
+    "jsx": "react-jsx"
+  },
+  "include": ["scripts/import-staff.ts", "src/lib/staff-import.ts"],
+  "exclude": ["node_modules", ".next", ".private-tools"]
+}

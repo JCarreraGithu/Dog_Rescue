@@ -33,4 +33,10 @@ Thumbs.db
 
 # Datos privados del personal y bitácora
 src/data/admin-users.json
+src/data/admin.users.json
 src/data/audit-log.json
+
+# Herramientas compiladas, informes y PostgreSQL aislado de pruebas
+.private-tools/
+.local-test-db/
+lint-results.local.json

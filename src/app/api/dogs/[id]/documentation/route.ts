@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken } from "@/lib/staff-store";
 import {
   getLocalDogs,
   saveLocalDogs,
@@ -14,7 +15,7 @@ import { addNotification } from "@/lib/notifications";
 async function isAdminAuthenticated() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return verifySessionToken(token);
+  return getUserFromToken(token);
 }
 
 // OBTENER DOCUMENTACIÓN POR CICLO DE VIDA (ETAPAS 1, 2 Y 3)

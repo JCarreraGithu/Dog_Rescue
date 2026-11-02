@@ -673,7 +673,7 @@ function CatalogoContent() {
                         { key: "commitsToSterilize", label: "¿Aceptas el compromiso de esterilización?" },
                         { key: "knowsFiveFreedoms", label: "¿Conoces las 5 Libertades del Bienestar Animal?" },
                       ].map((q) => {
-                        const val = (appForm as any)[q.key];
+                        const val = appForm[q.key as keyof typeof appForm];
                         return (
                           <div key={q.key} className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between gap-2">
                             <span className="text-xs font-semibold text-slate-800 leading-tight">

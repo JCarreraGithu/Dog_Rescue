@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/components/CartProvider";
 import { SITE } from "@/config/site";
-import type { DeliveryMethod, PaymentMethod } from "@/lib/local-records";
+import type { DeliveryMethod, PaymentMethod, StoreOrder } from "@/lib/local-records";
 
 export default function CartDrawer() {
   const { items, total, isOpen, closeCart, setQty, removeItem, clear } =
@@ -36,7 +36,7 @@ export default function CartDrawer() {
 
   const [submittingOrder, setSubmittingOrder] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [createdOrder, setCreatedOrder] = useState<any | null>(null);
+  const [createdOrder, setCreatedOrder] = useState<StoreOrder | null>(null);
 
   if (!isOpen) return null;
 

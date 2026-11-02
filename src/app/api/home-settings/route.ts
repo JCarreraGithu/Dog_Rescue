@@ -5,13 +5,14 @@ import {
   saveHomeHeroSettings,
   DEFAULT_HOME_HERO_SETTINGS,
 } from "@/lib/home-settings";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken } from "@/lib/staff-store";
 import { addNotification } from "@/lib/notifications";
 
 async function isAdminAuthenticated() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return verifySessionToken(token);
+  return getUserFromToken(token);
 }
 
 export async function GET() {

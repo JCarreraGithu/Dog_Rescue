@@ -2,6 +2,8 @@
 
 import RefugeMap from "@/components/RefugeMap";
 import { useEffect, useState } from "react";
+import type { TransparencyView } from "@/lib/view-types";
+import type { DemoDog } from "@/data/default-dogs";
 import Link from "next/link";
 import ImpactCarousel from "@/components/ImpactCarousel";
 import { DEFAULT_DOGS } from "@/data/default-dogs";
@@ -31,9 +33,9 @@ import {
 
 export default function HomePage() {
   // Estados para contadores de transparencia
-  const [stats, setStats] = useState<any[]>([]);
+  const [stats, setStats] = useState<TransparencyView[]>([]);
   // Estados para perros destacados
-  const [featuredDogs, setFeaturedDogs] = useState<any[]>(DEFAULT_DOGS.slice(0, 3));
+  const [featuredDogs, setFeaturedDogs] = useState<DemoDog[]>(DEFAULT_DOGS.slice(0, 3));
   // Configuración del lema y portada
   const [heroSettings, setHeroSettings] = useState<HomeHeroSettings>(DEFAULT_HOME_HERO_SETTINGS);
   

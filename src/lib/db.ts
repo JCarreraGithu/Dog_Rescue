@@ -6,8 +6,7 @@ const globalForPrisma = globalThis as unknown as {
 
 export const prisma =
   globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ["query"],
-  });
+  // No registrar consultas ni parámetros: el personal incluye hashes privados.
+  new PrismaClient({ log: [] });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

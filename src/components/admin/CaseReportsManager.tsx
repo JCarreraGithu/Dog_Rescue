@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CaseReportView } from "@/lib/view-types";
 import {
   AlertTriangle,
   MapPin,
@@ -26,7 +27,7 @@ const STATUS_LIST = [
 ];
 
 export default function CaseReportsManager() {
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<CaseReportView[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("Todos");
   const [urgencyFilter, setUrgencyFilter] = useState<string>("Todas");
@@ -34,7 +35,7 @@ export default function CaseReportsManager() {
   const [toast, setToast] = useState("");
 
   // Modal de detalle / fotos y notas de rescate
-  const [selectedReport, setSelectedReport] = useState<any | null>(null);
+  const [selectedReport, setSelectedReport] = useState<CaseReportView | null>(null);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [notesDraft, setNotesDraft] = useState("");
   const [statusDraft, setStatusDraft] = useState("Recibido");
@@ -65,7 +66,7 @@ export default function CaseReportsManager() {
 
   const handleUpdateReport = async (
     reportId: string,
-    patch: Record<string, any>
+    patch: Partial<CaseReportView>
   ) => {
     try {
       const res = await fetch("/api/case-reports", {
@@ -78,7 +79,7 @@ export default function CaseReportsManager() {
         if (Array.isArray(data.reports)) {
           setReports(data.reports);
           if (selectedReport?.id === reportId) {
-            const updated = data.reports.find((r: any) => r.id === reportId);
+            const updated = data.reports.find((r: CaseReportView) => r.id === reportId);
             if (updated) setSelectedReport(updated);
           }
         } else {
@@ -115,14 +116,14 @@ export default function CaseReportsManager() {
     }
   };
 
-  const openReportModal = (report: any) => {
+  const openReportModal = (report: CaseReportView) => {
     setSelectedReport(report);
     setPhotoIndex(0);
     setNotesDraft(report.adminNotes || "");
     setStatusDraft(report.status || "Recibido");
   };
 
-  const buildReporterWhatsApp = (report: any) => {
+  const buildReporterWhatsApp = (report: CaseReportView) => {
     const cleanPhone = String(report.reporterPhone || "").replace(
       /[^0-9]/g,
       ""

@@ -1,3 +1,4 @@
+import type { TransparencyView } from "@/lib/view-types";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import fs from "fs";
@@ -11,7 +12,7 @@ const FALLBACK_STATS = [
   { id: "3", key: "sterilizations_count", value: 1020, label: "Esterilizaciones" },
 ];
 
-function readLocalStats() {
+function readLocalStats(): TransparencyView[] {
   try {
     if (fs.existsSync(STATS_FILE)) {
       const content = fs.readFileSync(STATS_FILE, "utf-8");
@@ -26,7 +27,7 @@ function readLocalStats() {
   return FALLBACK_STATS;
 }
 
-function saveLocalStats(stats: any[]) {
+function saveLocalStats(stats: TransparencyView[]) {
   try {
     fs.writeFileSync(STATS_FILE, JSON.stringify(stats, null, 2), "utf-8");
   } catch (err) {
@@ -59,7 +60,7 @@ export async function PUT(request: Request) {
       if (body.key && body.value !== undefined) {
         // Actualización individual
         const val = parseInt(body.value, 10);
-        currentStats = currentStats.map((s: any) =>
+        currentStats = currentStats.map((s) =>
           s.key === body.key ? { ...s, value: val } : s
         );
 
@@ -71,7 +72,7 @@ export async function PUT(request: Request) {
               create: {
                 key: body.key,
                 value: val,
-                label: currentStats.find((s: any) => s.key === body.key)?.label || body.key,
+                label: currentStats.find((s) => s.key === body.key)?.label || body.key,
               },
             });
           } catch {}
@@ -82,7 +83,7 @@ export async function PUT(request: Request) {
           if (["rescues_count", "adoptions_count", "sterilizations_count"].includes(key)) {
             const val = parseInt(String(rawVal), 10);
             if (!isNaN(val)) {
-              currentStats = currentStats.map((s: any) =>
+              currentStats = currentStats.map((s) =>
                 s.key === key ? { ...s, value: val } : s
               );
 
@@ -94,7 +95,7 @@ export async function PUT(request: Request) {
                     create: {
                       key,
                       value: val,
-                      label: currentStats.find((s: any) => s.key === key)?.label || key,
+                      label: currentStats.find((s) => s.key === key)?.label || key,
                     },
                   });
                 } catch {}
@@ -108,10 +109,10 @@ export async function PUT(request: Request) {
     }
 
     return NextResponse.json(currentStats);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error al actualizar contador:", error);
     return NextResponse.json(
-      { error: "Error al actualizar contador", details: error.message },
+      { error: "Error al actualizar contador", details: error instanceof Error ? error.message : "Error desconocido" },
       { status: 500 }
     );
   }

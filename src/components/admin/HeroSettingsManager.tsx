@@ -480,7 +480,7 @@ export default function HeroSettingsManager() {
                     onChange={(e) =>
                       setSettings({
                         ...settings,
-                        fontWeight: e.target.value as any,
+                        fontWeight: e.target.value as HomeHeroSettings["fontWeight"],
                       })
                     }
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
@@ -501,7 +501,7 @@ export default function HeroSettingsManager() {
                     onChange={(e) =>
                       setSettings({
                         ...settings,
-                        fontSize: e.target.value as any,
+                        fontSize: e.target.value as HomeHeroSettings["fontSize"],
                       })
                     }
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
@@ -557,7 +557,7 @@ export default function HeroSettingsManager() {
                     onChange={(e) =>
                       setSettings({
                         ...settings,
-                        textTransform: e.target.value as any,
+                        textTransform: e.target.value as HomeHeroSettings["textTransform"],
                       })
                     }
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"

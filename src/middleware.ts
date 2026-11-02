@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE, getLoginPath, isAdminHost } from "@/lib/auth";
+import { SESSION_COOKIE, getLoginPath } from "@/lib/auth";
 import { canAccessApi } from "@/lib/permissions";
 import { getClientIp, getUserFromToken, writeAudit } from "@/lib/staff-store";
 
@@ -11,6 +11,7 @@ const PUBLIC_API: Record<string, string[]> = {
   "/api/special-cases": ["GET"], // casos especiales públicos en /conocenos e inicio
   "/api/about-settings": ["GET"], // foto principal y textos de /conocenos
   "/api/home-settings": ["GET"], // lema y textos principales de la portada
+  "/api/donation-needs": ["GET"], // proyección pública de necesidades, sin inventario interno
   "/api/orders": ["POST"], // registro público de pedidos de la tienda
   "/api/applications": ["POST"], // formulario de adopción
   "/api/volunteers": ["POST"], // formulario de voluntariado
@@ -18,7 +19,7 @@ const PUBLIC_API: Record<string, string[]> = {
   "/api/case-reports/upload": ["POST"], // subida pública de fotos para reporte de perrito en riesgo
 };
 
-// Endpoints de autenticación: SOLO existen en el subdominio interno (ej. interno.localhost:3000)
+// Operaciones de autenticación disponibles en el dominio compartido.
 const AUTH_API: Record<string, string[]> = {
   "/api/auth/login": ["POST"],
   "/api/auth/logout": ["POST"],
@@ -36,87 +37,67 @@ function securityHeaders(response: NextResponse) {
   return response;
 }
 
-export async function middleware(request: NextRequest) {
+async function checkAccess(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method.toUpperCase();
   const loginPath = getLoginPath();
-  const onAdminHost = isAdminHost(request.headers.get("host"));
   const isApi = pathname.startsWith("/api/");
   const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
 
-  // =========================================================================
-  // 1. DOMINIO PÚBLICO (ej. http://localhost:3000 o www.dogrescue.org)
-  //    Aquí el panel, el login y las APIs administrativas NO EXISTEN (404).
-  // =========================================================================
-  if (!onAdminHost) {
-    if (pathname === "/acceso" || pathname === loginPath || isAdminPage) {
-      return notFound(request);
-    }
-    if (isApi) {
-      const allowed = PUBLIC_API[pathname];
-      if (allowed && allowed.includes(method)) {
-        return NextResponse.next();
-      }
-      // En el dominio público, cualquier otra ruta /api (incluido /api/auth/*) devuelve 404
-      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-    }
+  // El dominio compartido conserva todas las páginas públicas, incluso con sesión.
+  if (!isApi && !isAdminPage && pathname !== loginPath && pathname !== "/acceso") {
     return NextResponse.next();
   }
 
-  // =========================================================================
-  // 2. SUBDOMINIO INTERNO EXCLUSIVO (ej. http://interno.localhost:3000)
-  // =========================================================================
   if (pathname === "/acceso") return notFound(request);
 
-  // Ruta secreta de inicio de sesión dentro del subdominio interno
+  // Alias del formulario; la protección depende de la sesión y los permisos.
   if (pathname === loginPath) {
     const user = await getUserFromToken(request.cookies.get(SESSION_COOKIE)?.value);
-    if (user) return NextResponse.redirect(new URL("/admin", request.url));
-    return securityHeaders(NextResponse.rewrite(new URL("/acceso", request.url)));
+    if (user) return securityHeaders(NextResponse.redirect(new URL("/admin", request.url)));
+    return securityHeaders(NextResponse.next());
   }
 
-  // APIs públicas o de login dentro del subdominio interno
+  // Lista pública exacta de rutas y métodos.
   if (isApi) {
     const allowedPublic = PUBLIC_API[pathname];
-    if (allowedPublic && allowedPublic.includes(method)) return NextResponse.next();
+    const privateDogsQuery = pathname === "/api/dogs" && request.nextUrl.searchParams.get("deletedOnly") === "true";
+    if (allowedPublic && allowedPublic.includes(method) && !privateDogsQuery) return NextResponse.next();
     const allowedAuth = AUTH_API[pathname];
-    if (allowedAuth && allowedAuth.includes(method)) return NextResponse.next();
+    if (allowedAuth && allowedAuth.includes(method)) return securityHeaders(NextResponse.next());
   }
 
   // Verificar sesión del personal
   const user = await getUserFromToken(request.cookies.get(SESSION_COOKIE)?.value);
 
   if (!user) {
-    if (isApi) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    return notFound(request);
-  }
-
-  // Si ya tiene sesión en el subdominio interno y entra a "/", llevarlo directo a /admin
-  if (pathname === "/") {
-    return NextResponse.redirect(new URL("/admin", request.url));
+    if (isApi) return securityHeaders(NextResponse.json({ error: "No autorizado" }, { status: 401 }));
+    const loginUrl = new URL(loginPath, request.url);
+    loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
+    return securityHeaders(NextResponse.redirect(loginUrl));
   }
 
   if (isApi) {
     if (!canAccessApi(user.role, method, pathname)) {
-      void writeAudit({
+      await writeAudit({
         actor: user.email,
         actorName: user.name,
         action: "Acceso denegado",
         detail: `${method} ${pathname} (rol ${user.role})`,
         ip: getClientIp(request),
       });
-      return NextResponse.json({ error: "No tienes permiso para esta acción." }, { status: 403 });
+      return securityHeaders(NextResponse.json({ error: "No tienes permiso para esta acción." }, { status: 403 }));
     }
 
     if (user.mustChangePassword && pathname !== "/api/auth/change-password") {
-      return NextResponse.json(
+      return securityHeaders(NextResponse.json(
         { error: "Debes cambiar tu contraseña antes de continuar.", mustChangePassword: true },
         { status: 403 }
-      );
+      ));
     }
 
     if (method !== "GET" && method !== "HEAD" && pathname !== "/api/auth/change-password") {
-      void writeAudit({
+      await writeAudit({
         actor: user.email,
         actorName: user.name,
         action: `${method} ${pathname}`,
@@ -128,7 +109,14 @@ export async function middleware(request: NextRequest) {
   return securityHeaders(NextResponse.next());
 }
 
+export async function middleware(request: NextRequest) {
+  try { return await checkAccess(request); }
+  catch {
+    return securityHeaders(NextResponse.json({ error: "El acceso administrativo no está disponible temporalmente." }, { status: 503 }));
+  }
+}
+
 export const config = {
   runtime: "nodejs",
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|.*\\.[a-zA-Z0-9]+$).*)"],
+  matcher: ["/api/:path*", "/admin/:path*", "/((?!_next/static|_next/image|favicon.ico|robots.txt).*)"],
 };

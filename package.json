@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
+    "test": "tsc -p tsconfig.staff-tools.json && node --test tests/*.test.cjs",
+    "test:postgres": "node scripts/test-postgres.mjs",
+    "staff:import": "tsc -p tsconfig.staff-tools.json && node .private-tools/scripts/import-staff.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {

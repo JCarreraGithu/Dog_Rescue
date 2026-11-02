@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken } from "@/lib/staff-store";
 import { cookies } from "next/headers";
 
 async function isAdmin() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return Boolean(token && (await verifySessionToken(token)));
+  return Boolean(token && (await getUserFromToken(token)));
 }
 
 export async function GET() {

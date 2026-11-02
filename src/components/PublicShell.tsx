@@ -1,29 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 
-export default function PublicShell({ children }: { children: React.ReactNode }) {
+export default function PublicShell({ children, loginPath }: { children: React.ReactNode; loginPath: string }) {
   const pathname = usePathname();
-  const [isInternalHost, setIsInternalHost] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const h = window.location.hostname.toLowerCase();
-      if (h.startsWith("interno.")) {
-        setIsInternalHost(true);
-      }
-    }
-  }, []);
-
   const isInternalRoute =
-    isInternalHost ||
     pathname === "/admin" ||
     pathname?.startsWith("/admin/") ||
     pathname === "/acceso" ||
+    pathname === loginPath ||
     pathname?.startsWith("/acceso-");
 
   if (isInternalRoute) {

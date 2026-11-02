@@ -1,3 +1,4 @@
+import { staffUnavailable } from "@/lib/staff-response";
 import { NextResponse } from "next/server";
 import { isRole, validatePassword } from "@/lib/permissions";
 import {
@@ -7,7 +8,6 @@ import {
   hashPassword,
   mutateUsers,
   toPublicUser,
-  writeAudit,
 } from "@/lib/staff-store";
 
 async function requireSuperadmin(request: Request) {
@@ -19,7 +19,7 @@ async function requireSuperadmin(request: Request) {
 type Ctx = { params: Promise<{ id: string }> };
 
 // Editar nombre, rol, activar/desactivar o restablecer contraseña de un integrante.
-export async function PATCH(request: Request, { params }: Ctx) {
+async function handlePATCH(request: Request, { params }: Ctx) {
   const actor = await requireSuperadmin(request);
   if (!actor) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const { id } = await params;
@@ -77,24 +77,15 @@ export async function PATCH(request: Request, { params }: Ctx) {
       changes.push("contraseña restablecida");
     }
     return { user: target, changes };
-  });
+  }, { actor, superadmin: true, audit: (result) => result.user && result.changes?.length ? ({ actor: actor.email, actorName: actor.name, action: "Usuario modificado", detail: `${result.user.email}: ${result.changes.join(", ")}`, ip: getClientIp(request) }) : null });
 
   if ("error" in outcome) return NextResponse.json({ error: outcome.error }, { status: outcome.status });
 
-  if (outcome.changes.length > 0) {
-    await writeAudit({
-      actor: actor.email,
-      actorName: actor.name,
-      action: "Usuario modificado",
-      detail: `${outcome.user.email}: ${outcome.changes.join(", ")}`,
-      ip: getClientIp(request),
-    });
-  }
   return NextResponse.json(toPublicUser(outcome.user));
 }
 
 // Eliminar definitivamente (recomendado: mejor desactivar para conservar el historial).
-export async function DELETE(request: Request, { params }: Ctx) {
+async function handleDELETE(request: Request, { params }: Ctx) {
   const actor = await requireSuperadmin(request);
   if (!actor) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   const { id } = await params;
@@ -111,15 +102,18 @@ export async function DELETE(request: Request, { params }: Ctx) {
     }
     users.splice(index, 1);
     return { email: target.email };
-  });
+  }, { actor, superadmin: true, audit: (result) => "email" in result ? ({ actor: actor.email, actorName: actor.name, action: "Usuario eliminado", detail: result.email, ip: getClientIp(request) }) : null });
 
   if ("error" in outcome) return NextResponse.json({ error: outcome.error }, { status: outcome.status });
-  await writeAudit({
-    actor: actor.email,
-    actorName: actor.name,
-    action: "Usuario eliminado",
-    detail: outcome.email,
-    ip: getClientIp(request),
-  });
   return NextResponse.json({ ok: true });
+}
+
+export async function PATCH(request: Request, context: Ctx) {
+  try { return await handlePATCH(request, context); }
+  catch { return staffUnavailable(); }
+}
+
+export async function DELETE(request: Request, context: Ctx) {
+  try { return await handleDELETE(request, context); }
+  catch { return staffUnavailable(); }
 }
