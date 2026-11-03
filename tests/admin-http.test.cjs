@@ -65,6 +65,34 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
     assert.equal(JSON.parse((await call('/api/auth/session', { headers })).body).user.role, 'superadmin');
     const event = await db.notification.create({ data: { type: 'adoption', title: 'HTTP synthetic', message: 'Test', targetTab: 'applications' } });
     const jsonHeaders = { ...headers, 'content-type': 'application/json' };
+    const publicHeaders = { 'content-type': 'application/json' };
+    const dogId = 'http-intake-dog';
+    await db.dog.upsert({ where: { id: dogId }, create: { id: dogId, name: 'HTTP synthetic dog', breed: 'Mestizo', ageCategory: 'Adulto', ageYears: 3, gender: 'Hembra', size: 'Mediano', temperament: 'Tranquilo', status: 'En Adopción', rescueHistory: 'Test', healthNotes: 'Test', photoUrl: 'https://example.invalid/dog.png' }, update: {} });
+    const imageBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0]);
+    const form = new FormData(); form.set('file', new File([imageBytes], 'test.png'));
+    const uploaded = await call('/api/case-reports/upload', { method: 'POST', body: form });
+    assert.equal(uploaded.status, 201);
+    const imageUrl = JSON.parse(uploaded.body).url;
+    assert.ok(imageUrl);
+    assert.equal((await call(imageUrl)).status, 200);
+    const submissions = {
+      orders: { customerName: 'HTTP customer', customerPhone: '55551234', items: [{ id: 'shirt', name: 'Shirt', price: 25, qty: 2 }], deliveryMethod: 'Recoger en Sede' },
+      applications: { dogId, applicantName: 'HTTP applicant', applicantPhone: '55551234', applicantAge: 30, petsAllowed: true, safeHome: true, enoughSpace: true, petAccess: 'Todos', knowsFiveFreedoms: true, commitsToWelfare: true, commitsToSterilize: true },
+      volunteers: { name: 'HTTP volunteer', phone: '55551234', age: 30, availableDays: ['Sábado'], interestAreas: ['Cuidados en Refugio'], commitmentDuration: 'Al menos 3 meses', acceptsSafetyRules: true, authorizesDataUse: true },
+      'case-reports': { reporterName: 'HTTP reporter', reporterPhone: '55551234', locationAddress: 'Synthetic location', description: 'Synthetic report', urgencyLevel: 'Alta', photos: [imageUrl] },
+    };
+    const intakeIds = {};
+    for (const [name, payload] of Object.entries(submissions)) {
+      assert.equal((await call('/api/' + name)).status, 401);
+      const response = await call('/api/' + name, { method: 'POST', headers: publicHeaders, body: JSON.stringify(payload) });
+      assert.equal(response.status, 201, name);
+      intakeIds[name] = JSON.parse(response.body).id;
+      assert.ok(JSON.parse((await call('/api/' + name, { headers })).body).some(row => row.id === intakeIds[name]));
+    }
+    const deletedOrder = await call('/api/orders', { method: 'POST', headers: publicHeaders, body: JSON.stringify(submissions.orders) });
+    const deletedOrderId = JSON.parse(deletedOrder.body).id;
+    assert.equal((await call('/api/orders?id=' + deletedOrderId, { method: 'DELETE', headers })).status, 200);
+    assert.ok(!JSON.parse((await call('/api/orders', { headers })).body).some(row => row.id === deletedOrderId));
     assert.equal((await call('/api/notifications', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ id: event.id }) })).status, 200);
     assert.equal((await db.notification.findUnique({ where: { id: event.id } })).read, true);
     assert.equal((await call(`/api/notifications?id=${event.id}`, { method: 'DELETE', headers })).status, 200);
@@ -82,6 +110,13 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
       await new Promise(resolve => setTimeout(resolve, 250));
     }
     assert.equal(restarted, true);
+    for (const [name, recordId] of Object.entries(intakeIds)) {
+      assert.ok(JSON.parse((await call('/api/' + name, { headers })).body).some(row => row.id === recordId), name + ' survives restart');
+    }
+    assert.ok(!JSON.parse((await call('/api/orders', { headers })).body).some(row => row.id === deletedOrderId), 'deleted order remains deleted');
+    assert.equal((await call(imageUrl)).status, 200);
+    assert.equal((await call('/api/applications/' + intakeIds.applications + '/word', { headers })).status, 200);
+    assert.equal((await call('/api/volunteers/' + intakeIds.volunteers + '/word', { headers })).status, 200);
     assert.equal(JSON.parse((await call('/api/home-settings')).body).mottoPart1, patch.mottoPart1);
     assert.ok(!JSON.parse((await call('/api/notifications', { headers })).body).some(n => n.id === event.id));
     await db.staffUser.update({ where: { id: user.id }, data: { role: 'editor' } });
@@ -90,6 +125,7 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
     assert.equal((await call('/api/dogs', { method: 'POST', headers, body: '{}' })).status, 403);
     assert.equal((await call('/api/home-settings', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(patch) })).status, 403);
     assert.equal((await call('/api/notifications', { method: 'DELETE', headers })).status, 403);
+    for (const [name, recordId] of Object.entries(intakeIds)) assert.equal((await call('/api/' + name + '?id=' + recordId, { method: 'DELETE', headers })).status, 403);
     const logout = await call('/api/auth/logout', { method: 'POST', headers });
     assert.equal(logout.status, 200);
     assert.ok(/Max-Age=0/i.test(logout.headers.get('set-cookie')), 'cookie flag present');

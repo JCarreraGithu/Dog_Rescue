@@ -1,6 +1,6 @@
 // Test double only. Integration mode uses the generated Prisma client instead.
 exports.createMemoryPrisma = function () {
-  const state = { staffUser: [], auditLog: [], loginAttempt: [], notification: [], homeSettings: [] };
+  const state = { staffUser: [], auditLog: [], loginAttempt: [], notification: [], homeSettings: [], storeOrder: [], adoptionApplication: [], volunteer: [], caseReport: [], dog: [], reportImage: [] };
   let queue = Promise.resolve();
   const matches = (row, where = {}) => Object.entries(where).every(([key, value]) => {
     if (key === 'OR') return value.some(clause => matches(row, clause));
@@ -26,7 +26,13 @@ exports.createMemoryPrisma = function () {
       async create({ data }) {
         data = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
         if (state[table].some(row => row.id === data.id && data.id || row.email === data.email && data.email)) throw Error('unique conflict');
-        const row = { ...(table === 'auditLog' ? { id: require('node:crypto').randomUUID(), at: new Date(), actorName: null, detail: null, ip: null } : {}), ...(table === 'notification' ? { id: require('node:crypto').randomUUID(), createdAt: new Date(), read: false, metadata: null } : {}), ...structuredClone(data) };
+        const defaults = ['storeOrder', 'adoptionApplication', 'volunteer', 'caseReport', 'dog', 'reportImage'].includes(table) ? { id: require('node:crypto').randomUUID(), createdAt: new Date() } : {};
+        if (['dog', 'adoptionApplication'].includes(table)) defaults.updatedAt = new Date();
+        if (table === 'storeOrder') Object.assign(defaults, { status: 'Pendiente', paymentStatus: 'Pendiente', trackingNumber: '', department: '', shippingAddress: '', paymentReference: '', adminNotes: '', note: '' });
+        if (table === 'adoptionApplication') Object.assign(defaults, { dogId: null, dogSnapshot: null, evaluatorNotes: null });
+        if (table === 'caseReport') Object.assign(defaults, { adminNotes: '', photos: [] });
+        if (table === 'dog') Object.assign(defaults, { isDeleted: false });
+        const row = { ...defaults, ...(table === 'auditLog' ? { id: require('node:crypto').randomUUID(), at: new Date(), actorName: null, detail: null, ip: null } : {}), ...(table === 'notification' ? { id: require('node:crypto').randomUUID(), createdAt: new Date(), read: false, metadata: null } : {}), ...structuredClone(data) };
         state[table].push(row); return structuredClone(row);
       },
       async update({ where, data }) { const row = state[table].find(row => matches(row, where)); if (!row) throw Error('missing row'); Object.assign(row, structuredClone(data)); return structuredClone(row); },

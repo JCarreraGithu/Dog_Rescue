@@ -9,6 +9,6 @@
     "rootDir": ".",
     "jsx": "react-jsx"
   },
-  "include": ["scripts/import-staff.ts", "src/lib/staff-import.ts", "scripts/import-site-content.ts", "src/lib/site-content-import.ts"],
+  "include": ["scripts/import-staff.ts", "src/lib/staff-import.ts", "scripts/import-site-content.ts", "src/lib/site-content-import.ts", "scripts/import-orders.ts", "src/lib/order-import.ts"],
   "exclude": ["node_modules", ".next", ".private-tools"]
 }

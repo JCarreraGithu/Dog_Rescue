@@ -1,244 +1,34 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { SESSION_COOKIE } from "@/lib/auth";
-import { getUserFromToken } from "@/lib/staff-store";
-import { cookies } from "next/headers";
-import { getLocalVolunteers, saveLocalVolunteers } from "@/lib/local-records";
-import { addNotification } from "@/lib/notifications";
-
-async function isAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return !!token && !!(await getUserFromToken(token));
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { addNotification } from '@/lib/notifications';
+import { checkContentAccess } from '@/lib/content-auth';
+import { getVolunteers } from '@/lib/intake-store';
+import { body, id, text, age, choice, DAYS, AREAS, COMMITMENTS, IntakeError } from '@/lib/intake-validation';
+import { intakeFailure, intakeHeaders as headers } from '@/lib/intake-response';
+export const dynamic = 'force-dynamic';
+export async function GET(request: Request) {
+  try { const denied = await checkContentAccess(request, '/api/volunteers'); if (denied) return denied; return NextResponse.json(await getVolunteers(), { headers }); }
+  catch (error) { return intakeFailure(error); }
 }
-
-// Solo los administradores pueden consultar las solicitudes.
-export async function GET() {
-  try {
-    if (!(await isAdmin())) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const localVols = await getLocalVolunteers();
-
-    if (process.env.DATABASE_URL) {
-      try {
-        const volunteers = await prisma.volunteer.findMany({
-          orderBy: { createdAt: "desc" },
-        });
-        const merged = [
-          ...localVols,
-          ...volunteers.filter((v) => !localVols.some((l) => l.id === v.id)),
-        ];
-        return NextResponse.json(merged, {
-          headers: { "Cache-Control": "no-store" },
-        });
-      } catch {
-        // Fallback a voluntarios locales
-      }
-    }
-
-    return NextResponse.json(localVols, {
-      headers: { "Cache-Control": "no-store" },
-    });
-  } catch (error) {
-    console.error("Error al listar voluntarios:", error);
-    return NextResponse.json(
-      { error: "Error al listar voluntarios" },
-      { status: 500 }
-    );
-  }
-}
-
-// Formulario público de postulación.
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-    const phone = typeof body.phone === "string" ? body.phone.trim() : "";
-    const age = body.age;
-
-    const allowedDays = [
-      "Lunes",
-      "Martes",
-      "Miércoles",
-      "Jueves",
-      "Viernes",
-      "Sábado",
-      "Domingo",
-    ];
-
-    const allowedAreas = [
-      "Rescate y Logística en Campo",
-      "Cuidados en Refugio",
-      "Venta de Paletas y Productos Solidarios",
-      "Venta de Playeras y Merch Oficial",
-      "Redes Sociales y Difusión",
-      "Casas Cuna / Hogar Temporal",
-    ];
-
-    const allowedCommitments = [
-      "Fines de semana",
-      "Al menos 3 meses",
-      "6 meses o más",
-    ];
-
-    const validDays =
-      Array.isArray(body.availableDays) &&
-      body.availableDays.length > 0 &&
-      body.availableDays.every(
-        (day: unknown) => typeof day === "string" && allowedDays.includes(day)
-      );
-
-    const validAreas =
-      Array.isArray(body.interestAreas) &&
-      body.interestAreas.length > 0 &&
-      body.interestAreas.every(
-        (area: unknown) =>
-          typeof area === "string" && allowedAreas.includes(area)
-      );
-
-    if (
-      !name ||
-      !phone ||
-      !Number.isInteger(age) ||
-      age < 18 ||
-      age > 120 ||
-      !validDays ||
-      !validAreas ||
-      !allowedCommitments.includes(body.commitmentDuration) ||
-      body.acceptsSafetyRules !== true ||
-      body.authorizesDataUse !== true
-    ) {
-      return NextResponse.json(
-        { error: "Completa correctamente los campos obligatorios." },
-        { status: 400 }
-      );
-    }
-
-    const newVol = {
-      id: `vol-${Date.now()}`,
-      name,
-      phone,
-      age,
-      availableDays: body.availableDays,
-      commitmentDuration: body.commitmentDuration,
-      interestAreas: body.interestAreas,
-      animalExperience:
-        typeof body.animalExperience === "string"
-          ? body.animalExperience.trim()
-          : "",
-      motivation:
-        typeof body.motivation === "string" ? body.motivation.trim() : "",
-      acceptsSafetyRules: true,
-      authorizesDataUse: true,
-      status: "En Evaluación",
-      createdAt: new Date().toISOString(),
-    };
-
-    const currentLocal = await getLocalVolunteers();
-    await saveLocalVolunteers([newVol, ...currentLocal]);
-
-    await addNotification({
-      type: "volunteer",
-      title: `Nueva Postulación de Voluntariado: ${name}`,
-      message: `${name} (${age} años • Tel: ${phone}) se postuló para: ${body.interestAreas.join(
-        ", "
-      )}.`,
-      targetTab: "volunteers",
-      metadata: { volunteerId: newVol.id },
+    const data = await body(request), name = text(data.name), phone = text(data.phone), years = age(data.age);
+    if (!name || !phone || data.acceptsSafetyRules !== true || data.authorizesDataUse !== true) throw new IntakeError('Completa correctamente los campos obligatorios.');
+    if (!Array.isArray(data.availableDays) || !data.availableDays.length || !Array.isArray(data.interestAreas) || !data.interestAreas.length) throw new IntakeError('Selecciona los días y áreas de interés.');
+    const availableDays = data.availableDays.map(day => choice(day, DAYS)), interestAreas = data.interestAreas.map(area => choice(area, AREAS)), commitmentDuration = choice(data.commitmentDuration, COMMITMENTS);
+    const row = await prisma.$transaction(async tx => {
+      const volunteer = await tx.volunteer.create({ data: { name, phone, age: years, email: text(data.email), municipality: text(data.municipality), availableDays, commitmentDuration, interestAreas, animalExperience: text(data.animalExperience), motivation: text(data.motivation), acceptsSafetyRules: true, authorizesDataUse: true, status: 'En Evaluación' } });
+      await addNotification({ type: 'volunteer', title: 'Nueva Postulación de Voluntariado: ' + name, message: name + ' (' + years + ' años • Tel: ' + phone + ') se postuló para: ' + interestAreas.join(', '), targetTab: 'volunteers', metadata: { volunteerId: volunteer.id } }, tx);
+      return volunteer;
     });
-
-    if (process.env.DATABASE_URL) {
-      try {
-        await prisma.volunteer.create({
-          data: {
-            name,
-            phone,
-            age,
-            availableDays: body.availableDays,
-            commitmentDuration: body.commitmentDuration,
-            interestAreas: body.interestAreas,
-            animalExperience: newVol.animalExperience,
-            motivation: newVol.motivation,
-            acceptsSafetyRules: true,
-            authorizesDataUse: true,
-            status: "En Evaluación",
-          },
-        });
-      } catch {
-        // Ya guardado localmente
-      }
-    }
-
-    return NextResponse.json(newVol, { status: 201 });
-  } catch (error) {
-    console.error("Error al registrar solicitud:", error);
-    return NextResponse.json(
-      { error: "Error al registrar solicitud de voluntariado" },
-      { status: 500 }
-    );
-  }
+    return NextResponse.json(row, { status: 201, headers });
+  } catch (error) { return intakeFailure(error); }
 }
-
-// Aprobar o rechazar solicitudes desde el panel administrativo.
 export async function PUT(request: Request) {
-  try {
-    if (!(await isAdmin())) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const body = await request.json();
-
-    if (
-      typeof body.id !== "string" ||
-      !["Aprobado", "Rechazado"].includes(body.status)
-    ) {
-      return NextResponse.json(
-        { error: "Datos de evaluación inválidos" },
-        { status: 400 }
-      );
-    }
-
-    const localVols = await getLocalVolunteers();
-    const idx = localVols.findIndex((v) => v.id === body.id);
-    if (idx !== -1) {
-      localVols[idx] = {
-        ...localVols[idx],
-        status: body.status,
-        evaluatorNotes:
-          typeof body.evaluatorNotes === "string"
-            ? body.evaluatorNotes.trim()
-            : localVols[idx].evaluatorNotes,
-      };
-      await saveLocalVolunteers(localVols);
-      return NextResponse.json(localVols[idx]);
-    }
-
-    if (process.env.DATABASE_URL) {
-      const volunteer = await prisma.volunteer.update({
-        where: { id: body.id },
-        data: {
-          status: body.status,
-          evaluatorNotes:
-            typeof body.evaluatorNotes === "string"
-              ? body.evaluatorNotes.trim()
-              : null,
-        },
-      });
-      return NextResponse.json(volunteer);
-    }
-
-    return NextResponse.json(
-      { error: "Solicitud no encontrada" },
-      { status: 404 }
-    );
-  } catch (error) {
-    console.error("Error al evaluar solicitud:", error);
-    return NextResponse.json(
-      { error: "No se pudo actualizar la solicitud" },
-      { status: 500 }
-    );
-  }
+  try { const denied = await checkContentAccess(request, '/api/volunteers'); if (denied) return denied; const data = await body(request); const row = await prisma.volunteer.update({ where: { id: id(data.id) }, data: { status: choice(data.status, ['Aprobado', 'Rechazado']), ...(typeof data.evaluatorNotes === 'string' ? { evaluatorNotes: data.evaluatorNotes.trim() } : {}) } }); return NextResponse.json(row, { headers }); }
+  catch (error) { return intakeFailure(error); }
+}
+export async function DELETE(request: Request) {
+  try { const denied = await checkContentAccess(request, '/api/volunteers'); if (denied) return denied; const result = await prisma.volunteer.deleteMany({ where: { id: id(new URL(request.url).searchParams.get('id')) } }); if (!result.count) throw new IntakeError('Solicitud no encontrada.', 404); return NextResponse.json({ ok: true }, { headers }); }
+  catch (error) { return intakeFailure(error); }
 }

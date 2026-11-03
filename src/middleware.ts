@@ -61,6 +61,7 @@ async function checkAccess(request: NextRequest) {
   // Lista pública exacta de rutas y métodos.
   if (isApi) {
     const allowedPublic = PUBLIC_API[pathname];
+    if (method === "GET" && /^\/api\/case-reports\/images\/[0-9a-f-]{36}$/i.test(pathname)) return NextResponse.next();
     const privateDogsQuery = pathname === "/api/dogs" && request.nextUrl.searchParams.get("deletedOnly") === "true";
     if (allowedPublic && allowedPublic.includes(method) && !privateDogsQuery) return NextResponse.next();
     const allowedAuth = AUTH_API[pathname];

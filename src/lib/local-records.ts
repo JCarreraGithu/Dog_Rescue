@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { DEFAULT_DOGS, DemoDog } from "@/data/default-dogs";
-import type { VolunteerView, CaseReportView } from "@/lib/view-types";
+import { getApplications, getVolunteers, getReports, getOrders } from "@/lib/intake-store";
 
 const DATA_DIR = path.join(process.cwd(), "src", "data");
 
@@ -149,24 +149,9 @@ export async function saveLocalDogs(list: LocalDog[]): Promise<void> {
   await writeJsonArray("dogs.json", list);
 }
 
-async function readJsonArray<T>(fileName: string): Promise<T[]> {
-  try {
-    const raw = await fs.readFile(path.join(DATA_DIR, fileName), "utf-8");
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-  } catch {
-    // Archivo aún no creado
-  }
-  return [];
-}
-
 async function writeJsonArray<T>(fileName: string, data: T[]): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(
-    path.join(DATA_DIR, fileName),
-    JSON.stringify(data, null, 2),
-    "utf-8"
-  );
+  await fs.writeFile(path.join(DATA_DIR, fileName), JSON.stringify(data, null, 2), "utf-8");
 }
 
 // 1. SOLICITUDES DE ADOPCIÓN
@@ -193,11 +178,8 @@ export type LocalAdoptionApplication = {
   createdAt: string;
 };
 
-export const getLocalApplications = () =>
-  readJsonArray<LocalAdoptionApplication>("adoption-applications.json");
-
-export const saveLocalApplications = (list: LocalAdoptionApplication[]) =>
-  writeJsonArray("adoption-applications.json", list);
+// Alias histórico para consumidores de expedientes: ahora consulta PostgreSQL.
+export const getLocalApplications = getApplications;
 
 // 2. PEDIDOS DE LA TIENDA SOLIDARIA
 export type StoreOrderItem = {
@@ -242,22 +224,7 @@ export type StoreOrder = {
   createdAt: string;
 };
 
-export const getStoreOrders = () =>
-  readJsonArray<StoreOrder>("store-orders.json");
-
-export const saveStoreOrders = (list: StoreOrder[]) =>
-  writeJsonArray("store-orders.json", list);
-
-// 3. SOLICITUDES DE VOLUNTARIADO
-export const getLocalVolunteers = () =>
-  readJsonArray<VolunteerView>("volunteers.json");
-
-export const saveLocalVolunteers = (list: VolunteerView[]) =>
-  writeJsonArray("volunteers.json", list);
-
-// 4. REPORTES DE PERRITOS EN RIESGO
-export const getLocalCaseReports = () =>
-  readJsonArray<CaseReportView>("case-reports.json");
-
-export const saveLocalCaseReports = (list: CaseReportView[]) =>
-  writeJsonArray("case-reports.json", list);
+// Alias de lectura conservados para otros módulos. No hay fallback ni escritura JSON.
+export const getStoreOrders = getOrders;
+export const getLocalVolunteers = getVolunteers;
+export const getLocalCaseReports = getReports;

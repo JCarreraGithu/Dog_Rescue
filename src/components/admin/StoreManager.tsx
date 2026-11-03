@@ -108,6 +108,7 @@ export default function StoreManager() {
   const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState("");
   const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [orderDeliveryFilter, setOrderDeliveryFilter] = useState<string>("Todos");
   const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
@@ -122,13 +123,15 @@ export default function StoreManager() {
 
   const loadOrders = async () => {
     try {
-      const res = await fetch("/api/orders");
+      const res = await fetch("/api/orders", { cache: "no-store" });
+      if (!res.ok) throw new Error("No se pudieron cargar los pedidos.");
       const data = await res.json();
       if (Array.isArray(data)) {
+        setOrderError("");
         setOrders(data);
       }
     } catch (err) {
-      console.error(err);
+      setOrderError(err instanceof Error ? err.message : "No se pudieron cargar los pedidos.");
     }
   };
 
@@ -145,12 +148,14 @@ export default function StoreManager() {
   };
 
   const handleUpdateOrder = async (orderId: string, patch: Partial<StoreOrder>) => {
+    setOrderError("");
     try {
       const res = await fetch("/api/orders", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: orderId, ...patch }),
       });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error || "No se pudo actualizar el pedido."); }
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.orders)) {
@@ -163,10 +168,12 @@ export default function StoreManager() {
           await loadOrders();
         }
         showSuccess("Pedido actualizado correctamente.");
+        return true;
       }
     } catch (err) {
-      console.error(err);
+      setOrderError(err instanceof Error ? err.message : "No se pudo actualizar el pedido.");
     }
+    return false;
   };
 
   const handleDeleteOrder = async (orderId: string) => {
@@ -175,13 +182,16 @@ export default function StoreManager() {
       const res = await fetch(`/api/orders?id=${encodeURIComponent(orderId)}`, {
         method: "DELETE",
       });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error || "No se pudo eliminar el pedido."); }
       if (res.ok) {
-        await loadOrders();
+        const data = await res.json();
+        setOrders(data.orders);
+        setOrderError("");
         if (selectedOrder?.id === orderId) setSelectedOrder(null);
         showSuccess("Pedido eliminado.");
       }
     } catch (err) {
-      console.error(err);
+      setOrderError(err instanceof Error ? err.message : "No se pudo eliminar el pedido.");
     }
   };
 
@@ -442,6 +452,7 @@ export default function StoreManager() {
 
   return (
     <div className="space-y-6">
+      {orderError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-700">{orderError}</p>}
       {/* 0. CENTRO DE GESTIÓN DE PEDIDOS, PAGOS Y ENVÍOS (CARGO EXPRESO / RECOGER) */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -1363,8 +1374,7 @@ export default function StoreManager() {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                await handleUpdateOrder(selectedOrder.id, orderEditForm);
-                setSelectedOrder(null);
+                if (await handleUpdateOrder(selectedOrder.id, orderEditForm)) setSelectedOrder(null);
               }}
               className="space-y-4"
             >

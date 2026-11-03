@@ -27,6 +27,7 @@ const STATUS_LIST = [
 ];
 
 export default function CaseReportsManager() {
+  const [requestError, setRequestError] = useState("");
   const [reports, setReports] = useState<CaseReportView[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("Todos");
@@ -48,13 +49,15 @@ export default function CaseReportsManager() {
   const loadReports = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/case-reports");
+      const res = await fetch("/api/case-reports", { cache: "no-store" });
+      if (!res.ok) throw new Error("No se pudieron cargar los reportes.");
       const data = await res.json();
       if (Array.isArray(data)) {
+        setRequestError("");
         setReports(data);
       }
     } catch (error) {
-      console.error("Error al cargar reportes:", error);
+      setRequestError(error instanceof Error ? error.message : "No se pudieron cargar los reportes.");
     } finally {
       setLoading(false);
     }
@@ -74,6 +77,7 @@ export default function CaseReportsManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: reportId, ...patch }),
       });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error || "No se pudo actualizar el reporte."); }
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.reports)) {
@@ -85,11 +89,14 @@ export default function CaseReportsManager() {
         } else {
           await loadReports();
         }
+        setRequestError("");
         showToast("Reporte actualizado correctamente");
+        return true;
       }
     } catch (error) {
-      console.error(error);
+      setRequestError(error instanceof Error ? error.message : "No se pudo actualizar el reporte.");
     }
+    return false;
   };
 
   const handleDeleteReport = async (reportId: string) => {
@@ -106,13 +113,15 @@ export default function CaseReportsManager() {
           method: "DELETE",
         }
       );
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error || "No se pudo eliminar el reporte."); }
       if (res.ok) {
+        setRequestError("");
         setReports((prev) => prev.filter((r) => r.id !== reportId));
         if (selectedReport?.id === reportId) setSelectedReport(null);
         showToast("Reporte eliminado");
       }
     } catch (error) {
-      console.error(error);
+      setRequestError(error instanceof Error ? error.message : "No se pudo eliminar el reporte.");
     }
   };
 
@@ -186,6 +195,7 @@ export default function CaseReportsManager() {
 
   return (
     <div className="space-y-6">
+      {requestError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-700">{requestError}</p>}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-xl border border-emerald-500/40 flex items-center gap-2.5 text-xs font-bold">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -673,11 +683,11 @@ export default function CaseReportsManager() {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                await handleUpdateReport(selectedReport.id, {
+                const saved = await handleUpdateReport(selectedReport.id, {
                   status: statusDraft,
                   adminNotes: notesDraft,
                 });
-                setSelectedReport(null);
+                if (saved) setSelectedReport(null);
               }}
               className="space-y-4 pt-2 border-t border-slate-200"
             >

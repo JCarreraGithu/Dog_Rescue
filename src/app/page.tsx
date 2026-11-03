@@ -71,6 +71,8 @@ export default function HomePage() {
   const [uploadingCasePhoto, setUploadingCasePhoto] = useState(false);
   const [casePhotoError, setCasePhotoError] = useState("");
   const [caseSubmitted, setCaseSubmitted] = useState(false);
+  const [caseSubmitError, setCaseSubmitError] = useState("");
+  const [caseSubmitting, setCaseSubmitting] = useState(false);
 
   useEffect(() => {
     // Cargar datos iniciales
@@ -137,18 +139,24 @@ export default function HomePage() {
     try {
       const uploaded: string[] = [];
       for (const file of Array.from(files)) {
-        const fd = new FormData();
-        fd.append("file", file);
-
-        const res = await fetch("/api/case-reports/upload", {
-          method: "POST",
-          body: fd,
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.url) {
-          throw new Error(data.error || "No se pudo subir la foto");
+        if (!file.size || file.size > 8 * 1024 * 1024) throw new Error("La imagen supera el límite de 8 MB.");
+        let uploadId = "", uploadToken = "", imageUrl = "";
+        for (let offset = 0; offset < file.size; offset += 2 * 1024 * 1024) {
+          const fd = new FormData();
+          fd.append("file", file.slice(offset, offset + 2 * 1024 * 1024), file.name);
+          fd.append("totalSize", String(file.size));
+          fd.append("offset", String(offset));
+          if (uploadId) { fd.append("uploadId", uploadId); fd.append("uploadToken", uploadToken); }
+          const res = await fetch("/api/case-reports/upload", { method: "POST", body: fd });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "No se pudo subir la foto.");
+          uploadId = data.uploadId || uploadId;
+          uploadToken = data.uploadToken || uploadToken;
+          imageUrl = data.url || imageUrl;
         }
-        uploaded.push(data.url);
+        if (!imageUrl) throw new Error("La imagen no terminó de guardarse.");
+        uploaded.push(imageUrl);
+
       }
 
       if (uploaded.length > 0) {
@@ -168,6 +176,9 @@ export default function HomePage() {
 
   const handleCaseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (caseSubmitting || uploadingCasePhoto) return;
+    setCaseSubmitting(true);
+    setCaseSubmitError("");
     try {
       const res = await fetch("/api/case-reports", {
         method: "POST",
@@ -178,6 +189,7 @@ export default function HomePage() {
           photos: casePhotos,
         }),
       });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error || "No se pudo enviar el reporte."); }
       if (res.ok) {
         setCaseSubmitted(true);
         setCaseForm({
@@ -190,8 +202,8 @@ export default function HomePage() {
         setCasePhotos([]);
       }
     } catch (err) {
-      console.error(err);
-    }
+      setCaseSubmitError(err instanceof Error ? err.message : "No se pudo enviar el reporte.");
+    } finally { setCaseSubmitting(false); }
   };
 
   return (
@@ -639,6 +651,7 @@ export default function HomePage() {
                   </label>
                 </div>
 
+                {caseSubmitError && <p role="alert" className="text-sm text-rose-700">{caseSubmitError}</p>}
                 {casePhotoError && (
                   <p className="text-xs font-bold text-rose-700 bg-rose-100 px-3 py-2 rounded-xl">
                     {casePhotoError}
@@ -677,7 +690,7 @@ export default function HomePage() {
 
               <button
                 type="submit"
-                disabled={uploadingCasePhoto}
+                disabled={caseSubmitting || uploadingCasePhoto}
                 className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm cursor-pointer"
               >
                 <Send className="w-4 h-4" />

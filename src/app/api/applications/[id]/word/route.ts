@@ -1,15 +1,12 @@
-import type { Prisma } from "@prisma/client";
-import type { LocalAdoptionApplication } from "@/lib/local-records";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
-import { prisma } from "@/lib/db";
 import { SESSION_COOKIE } from "@/lib/auth";
 import { getUserFromToken } from "@/lib/staff-store";
-import { getLocalApplications } from "@/lib/local-records";
+import { getApplication } from "@/lib/intake-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,15 +26,7 @@ export async function GET(
     }
 
     const { id } = await context.params;
-    const localApps = await getLocalApplications();
-    let application: LocalAdoptionApplication | Prisma.AdoptionApplicationGetPayload<{ include: { dog: { select: { name: true } } } }> | null | undefined = localApps.find((a) => a.id === id);
-
-    if (!application && process.env.DATABASE_URL) {
-      application = await prisma.adoptionApplication.findUnique({
-        where: { id },
-        include: { dog: { select: { name: true } } },
-      });
-    }
+    const application = await getApplication(id);
 
     if (!application) {
       return NextResponse.json(

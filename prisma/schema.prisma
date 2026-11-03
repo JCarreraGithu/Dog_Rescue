@@ -55,6 +55,7 @@ model AdoptionApplication {
   id              String    @id @default(uuid())
   dogId           String?
   dog             Dog?      @relation(fields: [dogId], references: [id], onDelete: SetNull)
+  dogSnapshot     Json?
 
   // Información inicial del solicitante
   applicantName   String
@@ -133,6 +134,8 @@ model CaseReport {
   locationAddress String   // Amatitlán, Guatemala
   description     String
   photoUrl        String?
+  photos          String[] @default([])
+  adminNotes      String   @default("")
   urgencyLevel    String   @default("Media") // Alta, Media, Baja
   status          String   @default("Recibido") // Recibido, En Revisión, Rescatado, Descartado
   createdAt       DateTime @default(now())
@@ -215,4 +218,38 @@ model HomeSettings {
   highlightColor String
   textAlignment  String
   updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+}
+
+model StoreOrder {
+  id               String   @id @default(uuid())
+  customerName     String
+  customerPhone    String
+  deliveryMethod   String
+  department       String   @default("")
+  shippingAddress  String   @default("")
+  shippingFee      Float
+  paymentMethod    String
+  paymentReference String   @default("")
+  paymentStatus    String   @default("Pendiente")
+  trackingNumber   String   @default("")
+  adminNotes       String   @default("")
+  note             String   @default("")
+  items            Json
+  subtotal         Float
+  total            Float
+  status           String   @default("Pendiente")
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt, id])
+}
+
+// Fotos de reportes: bytea persistente; cargas divididas para respetar el límite HTTP de Vercel.
+model ReportImage {
+  id              String   @id @default(uuid())
+  content         Bytes
+  contentType     String
+  totalSize       Int
+  received        Int
+  uploadTokenHash String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
 }
