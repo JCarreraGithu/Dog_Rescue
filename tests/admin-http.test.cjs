@@ -16,8 +16,12 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
   await db.staffUser.upsert({ where: { id: user.id }, create: user, update: user });
   const env = { ...process.env, DATABASE_URL: url, DIRECT_URL: url, AUTH_SECRET: crypto.randomBytes(32).toString('hex'), ADMIN_LOGIN_PATH: '/portal-interno' };
   delete env.ADMIN_EMAIL; delete env.ADMIN_PASSWORD;
-  const server = spawn(process.execPath, [require.resolve('next/dist/bin/next'), 'start', '--port', '3109', '--hostname', '127.0.0.1'], { env, windowsHide: true, stdio: 'ignore' });
-  server.on('error', () => {});
+  const launch = () => {
+    const child = spawn(process.execPath, [require.resolve('next/dist/bin/next'), 'start', '--port', '3109', '--hostname', '127.0.0.1'], { env, windowsHide: true, stdio: 'ignore' });
+    child.on('error', () => {});
+    return child;
+  };
+  let server = launch();
   const call = async (route, options = {}) => {
     const response = await fetch(`http://127.0.0.1:3109${route}`, { redirect: 'manual', signal: AbortSignal.timeout(10000), ...options });
     const body = await response.text();
@@ -44,6 +48,8 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
     assert.equal((await call('/api/dogs')).status, 200);
     assert.equal((await call('/api/dogs', { method: 'POST', body: '{}' })).status, 401);
     assert.equal((await call('/api/inventory')).status, 401);
+    assert.equal((await call('/api/notifications')).status, 401);
+    assert.equal((await call('/api/home-settings', { method: 'PUT', body: '{}' })).status, 401);
     const login = await call('/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: user.email, password }) });
     assert.equal(login.status, 200);
     const cookieHeader = login.headers.get('set-cookie');
@@ -57,10 +63,33 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
     assert.equal(home.status, 200);
     assert.equal(home.headers.get('location'), null);
     assert.equal(JSON.parse((await call('/api/auth/session', { headers })).body).user.role, 'superadmin');
+    const event = await db.notification.create({ data: { type: 'adoption', title: 'HTTP synthetic', message: 'Test', targetTab: 'applications' } });
+    const jsonHeaders = { ...headers, 'content-type': 'application/json' };
+    assert.equal((await call('/api/notifications', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ id: event.id }) })).status, 200);
+    assert.equal((await db.notification.findUnique({ where: { id: event.id } })).read, true);
+    assert.equal((await call(`/api/notifications?id=${event.id}`, { method: 'DELETE', headers })).status, 200);
+    assert.ok(!JSON.parse((await call('/api/notifications', { headers })).body).some(n => n.id === event.id));
+    const patch = { mottoPart1: 'HTTP persisted motto', highlightColor: 'gradient-gold', fontFamily: 'fredoka' };
+    assert.equal((await call('/api/home-settings', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(patch) })).status, 200);
+    const publicSettings = await call('/api/home-settings');
+    assert.equal(publicSettings.headers.get('cache-control'), 'no-store');
+    assert.equal(JSON.parse(publicSettings.body).mottoPart1, patch.mottoPart1);
+    await new Promise(resolve => { server.once('exit', resolve); server.kill(); });
+    server = launch();
+    let restarted = false;
+    for (let i = 0; i < 40; i++) {
+      try { if ((await call('/')).status === 200) { restarted = true; break; } } catch { /* startup */ }
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    assert.equal(restarted, true);
+    assert.equal(JSON.parse((await call('/api/home-settings')).body).mottoPart1, patch.mottoPart1);
+    assert.ok(!JSON.parse((await call('/api/notifications', { headers })).body).some(n => n.id === event.id));
     await db.staffUser.update({ where: { id: user.id }, data: { role: 'editor' } });
     assert.equal((await call('/api/team', { headers })).status, 403);
     await db.staffUser.update({ where: { id: user.id }, data: { role: 'voluntario' } });
     assert.equal((await call('/api/dogs', { method: 'POST', headers, body: '{}' })).status, 403);
+    assert.equal((await call('/api/home-settings', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(patch) })).status, 403);
+    assert.equal((await call('/api/notifications', { method: 'DELETE', headers })).status, 403);
     const logout = await call('/api/auth/logout', { method: 'POST', headers });
     assert.equal(logout.status, 200);
     assert.ok(/Max-Age=0/i.test(logout.headers.get('set-cookie')), 'cookie flag present');

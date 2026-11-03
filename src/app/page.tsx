@@ -92,8 +92,8 @@ export default function HomePage() {
       })
       .catch(() => {});
 
-    fetch("/api/home-settings")
-      .then((res) => res.json())
+    fetch("/api/home-settings", { cache: "no-store" })
+      .then(async (res) => { if (!res.ok) throw new Error("Lema no disponible"); return res.json(); })
       .then((data) => {
         if (data && typeof data === "object") {
           setHeroSettings(data);

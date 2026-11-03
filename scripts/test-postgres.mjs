@@ -48,6 +48,7 @@ try {
   console.log("PostgreSQL aislado conectado; se usarán únicamente cuentas sintéticas.");
   await run([require.resolve("prisma/build/index.js"), "migrate", "deploy"]);
   await run(["--test", "tests/admin-access.test.cjs"]);
+  await run(["--test", "tests/content-persistence.test.cjs"]);
   await run(["--test", "tests/admin-http.test.cjs"]);
 } catch {
   console.error("No se completó la verificación PostgreSQL aislada; revisar el log local privado.");

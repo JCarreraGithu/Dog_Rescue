@@ -13,11 +13,12 @@ import {
   Clock,
   CheckCircle2,
 } from "lucide-react";
-import { AdminNotification } from "@/lib/notifications";
+import type { AdminNotification } from "@/lib/notification-types";
 
 type Props = {
   notifications: AdminNotification[];
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<void>;
+  loadError?: string;
   onNavigateTab: (tab: AdminNotification["targetTab"]) => void;
 };
 
@@ -25,7 +26,10 @@ export default function NotificationsCenter({
   notifications,
   onRefresh,
   onNavigateTab,
+  loadError,
 }: Props) {
+  const [actionError, setActionError] = useState("");
+  const [busy, setBusy] = useState(false);
   const [filterType, setFilterType] = useState<string>("all");
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -42,36 +46,27 @@ export default function NotificationsCenter({
       ? notifications
       : notifications.filter((n) => n.type === filterType);
 
-  const handleMarkRead = async (id: string) => {
-    await fetch("/api/notifications", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    onRefresh();
+  const mutate = async (url: string, options: RequestInit): Promise<boolean> => {
+    setActionError("");
+    setBusy(true);
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "No se pudo guardar el cambio de notificaciones.");
+      }
+      await onRefresh();
+      return true;
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Error de conexión.");
+      return false;
+    } finally { setBusy(false); }
   };
-
-  const handleMarkAllRead = async () => {
-    await fetch("/api/notifications", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markAllRead: true }),
-    });
-    onRefresh();
-  };
-
-  const handleDeleteOne = async (id: string) => {
-    await fetch(`/api/notifications?id=${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    });
-    onRefresh();
-  };
-
+  const handleMarkRead = (id: string) => mutate("/api/notifications", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+  const handleMarkAllRead = () => mutate("/api/notifications", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ markAllRead: true }) });
+  const handleDeleteOne = (id: string) => mutate("/api/notifications?id=" + encodeURIComponent(id), { method: "DELETE" });
   const handleClearAll = async () => {
-    if (!window.confirm("¿Deseas limpiar todo el historial de notificaciones?"))
-      return;
-    await fetch("/api/notifications", { method: "DELETE" });
-    onRefresh();
+    if (window.confirm("¿Deseas limpiar todo el historial de notificaciones?")) await mutate("/api/notifications", { method: "DELETE" });
   };
 
   const getTypeStyle = (type: AdminNotification["type"]) => {
@@ -121,6 +116,7 @@ export default function NotificationsCenter({
 
   return (
     <div className="space-y-6">
+      {(actionError || loadError) && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{actionError || loadError}</p>}
       {/* CABECERA Y KPIs DE ACTIVIDAD */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -141,6 +137,7 @@ export default function NotificationsCenter({
             {unreadCount > 0 && (
               <button
                 type="button"
+                disabled={busy}
                 onClick={handleMarkAllRead}
                 className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition cursor-pointer shadow-xs"
               >
@@ -151,6 +148,7 @@ export default function NotificationsCenter({
             {notifications.length > 0 && (
               <button
                 type="button"
+                disabled={busy}
                 onClick={handleClearAll}
                 className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-bold text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 transition cursor-pointer"
               >
@@ -234,6 +232,7 @@ export default function NotificationsCenter({
             <button
               key={tab.id}
               type="button"
+                disabled={busy}
               onClick={() => setFilterType(tab.id)}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                 filterType === tab.id
@@ -314,8 +313,9 @@ export default function NotificationsCenter({
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
                     type="button"
+                disabled={busy}
                     onClick={async () => {
-                      if (!n.read) await handleMarkRead(n.id);
+                      if (!n.read && !(await handleMarkRead(n.id))) return;
                       onNavigateTab(n.targetTab);
                     }}
                     className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer"
@@ -327,6 +327,7 @@ export default function NotificationsCenter({
                   {!n.read && (
                     <button
                       type="button"
+                disabled={busy}
                       onClick={() => handleMarkRead(n.id)}
                       title="Marcar como leída"
                       className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition cursor-pointer"
@@ -337,6 +338,7 @@ export default function NotificationsCenter({
 
                   <button
                     type="button"
+                disabled={busy}
                     onClick={() => handleDeleteOne(n.id)}
                     title="Eliminar notificación"
                     className="p-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 transition cursor-pointer"

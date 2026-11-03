@@ -123,6 +123,7 @@ export default function AdminPage() {
   const [volunteerBusy, setVolunteerBusy] = useState(false);
   const [caseReports, setCaseReports] = useState<CaseReportView[]>([]);
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [notificationError, setNotificationError] = useState("");
 
   // Filtro y selecciones
   const [selectedDog, setSelectedDog] = useState<LocalDog | null>(null);
@@ -318,7 +319,11 @@ const [dogEditForm, setDogEditForm] = useState({
         fetch("/api/volunteers").then((r) => r.json()).catch(() => null),
         fetch("/api/case-reports").then((r) => r.json()).catch(() => null),
         fetch("/api/transparency").then((r) => r.json()).catch(() => null),
-        fetch("/api/notifications").then((r) => r.json()).catch(() => null),
+        fetch("/api/notifications", { cache: "no-store" }).then(async (r) => {
+          if (!r.ok) throw new Error("No se pudieron cargar las notificaciones.");
+          setNotificationError("");
+          return r.json();
+        }).catch(() => { setNotificationError("No se pudieron cargar las notificaciones. Inténtalo de nuevo."); return null; }),
       ]);
 
       if (Array.isArray(dogsRes)) setDogs(dogsRes);
@@ -981,6 +986,7 @@ const [dogEditForm, setDogEditForm] = useState({
         {/* ------------------------------------------------------------- */}
         {activeTab === "notifications" && (
           <NotificationsCenter
+            loadError={notificationError}
             notifications={notifications}
             onRefresh={loadAllData}
             onNavigateTab={(tab) => setActiveTab(tab)}

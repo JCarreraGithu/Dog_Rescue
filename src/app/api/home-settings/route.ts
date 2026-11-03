@@ -1,52 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import {
-  getHomeHeroSettings,
-  saveHomeHeroSettings,
-  DEFAULT_HOME_HERO_SETTINGS,
-} from "@/lib/home-settings";
-import { SESSION_COOKIE } from "@/lib/auth";
-import { getUserFromToken } from "@/lib/staff-store";
+import { prisma } from "@/lib/db";
+import { getHomeHeroSettings, saveHomeHeroSettings } from "@/lib/home-settings";
+import { checkContentAccess } from "@/lib/content-auth";
+import { ContentValidationError, validateHomeSettings } from "@/lib/content-validation";
 import { addNotification } from "@/lib/notifications";
 
-async function isAdminAuthenticated() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return getUserFromToken(token);
-}
-
+export const dynamic = "force-dynamic";
+const headers = { "Cache-Control": "no-store" };
 export async function GET() {
-  try {
-    const settings = await getHomeHeroSettings();
-    return NextResponse.json(settings);
-  } catch (error) {
-    console.error("Error al leer configuración del lema de inicio:", error);
-    return NextResponse.json(DEFAULT_HOME_HERO_SETTINGS);
-  }
+  try { return NextResponse.json(await getHomeHeroSettings(), { headers }); }
+  catch { return NextResponse.json({ error: "No se pudo leer la configuración del lema." }, { status: 503, headers }); }
 }
-
 export async function PUT(request: NextRequest) {
   try {
-    if (!(await isAdminAuthenticated())) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const updated = await saveHomeHeroSettings(body);
-
-    await addNotification({
-      type: "system",
-      title: "Lema de inicio actualizado",
-      message: `El lema principal de la página de inicio fue actualizado: "${updated.mottoPart1} ${updated.mottoHighlight}".`,
-      targetTab: "notifications",
+    const denied = await checkContentAccess(request, "/api/home-settings");
+    if (denied) return denied;
+    const body = await request.json().catch(() => null);
+    const patch = validateHomeSettings(body);
+    const updated = await prisma.$transaction(async (tx) => {
+      const settings = await saveHomeHeroSettings(patch, tx);
+      await addNotification({ type: "system", title: "Lema de inicio actualizado", message: "El lema principal de la página de inicio fue actualizado: "+settings.mottoPart1+" "+settings.mottoHighlight, targetTab: "notifications" }, tx);
+      return settings;
     });
-
-    return NextResponse.json(updated);
+    return NextResponse.json(updated, { headers });
   } catch (error) {
-    console.error("Error al guardar configuración del lema de inicio:", error);
-    return NextResponse.json(
-      { error: "No se pudo guardar la configuración del lema" },
-      { status: 500 }
-    );
+    if (error instanceof ContentValidationError) return NextResponse.json({ error: error.message }, { status: 400, headers });
+    return NextResponse.json({ error: "No se pudo guardar la configuración del lema." }, { status: 503, headers });
   }
 }

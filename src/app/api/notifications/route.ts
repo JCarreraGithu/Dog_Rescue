@@ -1,69 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getNotifications,
-  saveNotifications,
-} from "@/lib/notifications";
+import { getNotifications, markNotificationsRead, deleteNotifications } from "@/lib/notifications";
+import { checkContentAccess } from "@/lib/content-auth";
+import { NotificationNotFoundError } from "@/lib/content-validation";
 
-export async function GET() {
-  try {
-    const list = await getNotifications();
-    return NextResponse.json(list, {
-      headers: { "Cache-Control": "no-store" },
-    });
-  } catch (error) {
-    console.error("Error al obtener notificaciones:", error);
-    return NextResponse.json([], { status: 200 });
-  }
+export const dynamic = "force-dynamic";
+const headers = { "Cache-Control": "no-store" };
+function failure(error: unknown) {
+  if (error instanceof NotificationNotFoundError) return NextResponse.json({ error: error.message }, { status: 404, headers });
+  return NextResponse.json({ error: "No se pudieron guardar o consultar las notificaciones." }, { status: 503, headers });
 }
-
+export async function GET(request: Request) {
+  try {
+    const denied = await checkContentAccess(request, "/api/notifications");
+    if (denied) return denied;
+    return NextResponse.json(await getNotifications(), { headers });
+  } catch (error) { return failure(error); }
+}
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
-    const list = await getNotifications();
-
-    if (body.markAllRead) {
-      const updated = list.map((n) => ({ ...n, read: true }));
-      await saveNotifications(updated);
-      return NextResponse.json(updated);
+    const denied = await checkContentAccess(request, "/api/notifications");
+    if (denied) return denied;
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body) || !(body.markAllRead === true || (typeof body.id === "string" && body.id.trim()))) {
+      return NextResponse.json({ error: "Indica una notificación o markAllRead." }, { status: 400, headers });
     }
-
-    if (typeof body.id === "string") {
-      const updated = list.map((n) =>
-        n.id === body.id ? { ...n, read: true } : n
-      );
-      await saveNotifications(updated);
-      return NextResponse.json(updated);
-    }
-
-    return NextResponse.json(list);
-  } catch (error) {
-    console.error("Error al actualizar notificaciones:", error);
-    return NextResponse.json(
-      { error: "No se pudieron actualizar las notificaciones" },
-      { status: 500 }
-    );
-  }
+    return NextResponse.json(await markNotificationsRead(body.markAllRead === true ? undefined : body.id), { headers });
+  } catch (error) { return failure(error); }
 }
-
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    const list = await getNotifications();
-
-    if (id) {
-      const filtered = list.filter((n) => n.id !== id);
-      await saveNotifications(filtered);
-      return NextResponse.json(filtered);
-    }
-
-    await saveNotifications([]);
-    return NextResponse.json([]);
-  } catch (error) {
-    console.error("Error al eliminar notificaciones:", error);
-    return NextResponse.json(
-      { error: "No se pudieron eliminar las notificaciones" },
-      { status: 500 }
-    );
-  }
+    const denied = await checkContentAccess(request, "/api/notifications");
+    if (denied) return denied;
+    const params = new URL(request.url).searchParams;
+    const id = params.get("id");
+    if (params.has("id") && !id?.trim()) return NextResponse.json({ error: "ID de notificación no válido." }, { status: 400, headers });
+    return NextResponse.json(await deleteNotifications(id ?? undefined), { headers });
+  } catch (error) { return failure(error); }
 }

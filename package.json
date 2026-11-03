@@ -10,6 +10,7 @@
     "test": "tsc -p tsconfig.staff-tools.json && node --test tests/*.test.cjs",
     "test:postgres": "node scripts/test-postgres.mjs",
     "staff:import": "tsc -p tsconfig.staff-tools.json && node .private-tools/scripts/import-staff.js",
+    "content:import": "tsc -p tsconfig.staff-tools.json && node .private-tools/scripts/import-site-content.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {

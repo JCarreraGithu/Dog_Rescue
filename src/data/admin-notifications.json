@@ -1,55 +1,12 @@
 [
   {
-    "id": "notif-1793573885753-qyi5",
+    "id": "notif-1793664388966-vrk7",
     "type": "system",
     "title": "Lema de inicio actualizado",
-    "message": "El lema principal de la página de inicio fue actualizado: \"Transformando vidas, un rescate a la vez.\".",
+    "message": "El lema principal de la página de inicio fue actualizado: \"Cuidando la creación  de Dios\".",
     "targetTab": "notifications",
     "read": false,
-    "createdAt": "2026-11-01T22:58:05.753Z"
-  },
-  {
-    "id": "notif-1793236788877-s01c",
-    "type": "order",
-    "title": "Nuevo Pedido #PED-788866 • Recoger en Sede (Q110)",
-    "message": "castro555 (Tel: y5675675675) • Pago: Efectivo Contra Entrega • Entrega: Recoger en Sede Amatitlán • Productos: 1x Playera Oficial \"Guardianes de Amatitlán\" (Talla: S).",
-    "targetTab": "store",
-    "read": true,
-    "createdAt": "2026-10-29T01:19:48.877Z",
-    "metadata": {
-      "orderId": "PED-788866",
-      "total": 110,
-      "deliveryMethod": "Recoger en Sede",
-      "paymentMethod": "Efectivo Contra Entrega"
-    }
-  },
-  {
-    "id": "notif-1793236565272-6x7k",
-    "type": "adoption",
-    "title": "Nueva Solicitud de Adopción: Rocky",
-    "message": "ddsadas (20 años • Tel: 4343534534534534) envió postulación para adoptar a Rocky y aceptó el Acta de Compromiso.",
-    "targetTab": "applications",
-    "read": true,
-    "createdAt": "2026-10-29T01:16:05.272Z",
-    "metadata": {
-      "applicationId": "app-1793236565265",
-      "dogId": "demo-dog-1",
-      "dogName": "Rocky",
-      "applicantName": "ddsadas",
-      "applicantPhone": "4343534534534534"
-    }
-  },
-  {
-    "id": "notif-1793180094066-w2k5",
-    "type": "case_report",
-    "title": "Reporte de Perrito en Riesgo (Urgencia Alta)",
-    "message": "CASTROO (434534543) reportó en \"4TA AV A\": FEFEWFWEFWEFWEFEWF",
-    "targetTab": "dogs",
-    "read": true,
-    "createdAt": "2026-10-28T09:34:54.066Z",
-    "metadata": {
-      "reportId": "reporte-1793180094057"
-    }
+    "createdAt": "2026-11-03T00:06:28.966Z"
   },
   {
     "id": "notif-1793178750756-a9uy",

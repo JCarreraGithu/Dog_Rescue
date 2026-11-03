@@ -136,6 +136,7 @@ export default function HeroSettingsManager() {
   const [settings, setSettings] = useState<HomeHeroSettings>(
     DEFAULT_HOME_HERO_SETTINGS
   );
+  const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -143,13 +144,13 @@ export default function HeroSettingsManager() {
 
   useEffect(() => {
     fetch("/api/home-settings", { cache: "no-store" })
-      .then((res) => res.json())
+      .then(async (res) => { if (!res.ok) throw new Error("No se pudo cargar el lema guardado."); return res.json(); })
       .then((data) => {
         if (data && typeof data === "object") {
           setSettings(data);
         }
       })
-      .catch((err) => console.error("Error cargando lema:", err))
+      .catch(() => setLoadError("No se pudo cargar el lema guardado. Recarga para intentarlo de nuevo."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -170,6 +171,7 @@ export default function HeroSettingsManager() {
         throw new Error(errorData.error || "No se pudo guardar la configuración");
       }
 
+      setSettings(await res.json());
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 4500);
     } catch (error) {
@@ -193,6 +195,8 @@ export default function HeroSettingsManager() {
     }
     setSettings(DEFAULT_HOME_HERO_SETTINGS);
   };
+
+  if (loadError) return <p role="alert" className="rounded-xl bg-rose-50 p-4 text-rose-700">{loadError}</p>;
 
   if (loading) {
     return (

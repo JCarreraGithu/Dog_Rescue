@@ -185,3 +185,34 @@ model LoginAttempt {
 
   @@index([resetAt])
 }
+
+model Notification {
+  id        String   @id @default(uuid())
+  type      String
+  title     String
+  message   String
+  targetTab String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  metadata  Json?
+
+  @@index([createdAt, id])
+}
+
+model HomeSettings {
+  id             String   @id
+  badgeText      String
+  mottoPart1     String
+  mottoHighlight String
+  description    String
+  button1Text    String
+  button2Text    String
+  fontFamily     String
+  fontWeight     String
+  fontStyle      String
+  textTransform  String
+  fontSize       String
+  highlightColor String
+  textAlignment  String
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+}

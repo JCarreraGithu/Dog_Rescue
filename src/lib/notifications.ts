@@ -1,79 +1,53 @@
-import fs from "fs/promises";
-import path from "path";
+import type { Notification, Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
+import { ContentValidationError, NotificationNotFoundError } from "@/lib/content-validation";
+import { NOTIFICATION_TYPES, NOTIFICATION_TARGETS } from "@/lib/notification-types";
+import type { AdminNotification } from "@/lib/notification-types";
+export type { AdminNotification, NotificationType } from "@/lib/notification-types";
 
-export type NotificationType =
-  | "adoption"
-  | "order"
-  | "volunteer"
-  | "case_report"
-  | "system";
+type NotificationClient = Pick<Prisma.TransactionClient, "notification">;
 
-export type AdminNotification = {
-  id: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  targetTab:
-    | "applications"
-    | "store"
-    | "volunteers"
-    | "dogs"
-    | "case-reports"
-    | "notifications";
-  read: boolean;
-  createdAt: string;
-  metadata?: Record<string, unknown>;
-};
-
-const NOTIFICATIONS_FILE = path.join(
-  process.cwd(),
-  "src",
-  "data",
-  "admin-notifications.json"
-);
-
-export async function getNotifications(): Promise<AdminNotification[]> {
-  try {
-    const raw = await fs.readFile(NOTIFICATIONS_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed;
-    }
-  } catch {
-    // Si aún no existe el archivo, retornamos lista inicial vacía
+function toNotification(row: Notification): AdminNotification {
+  if (!(NOTIFICATION_TYPES as readonly string[]).includes(row.type) || !(NOTIFICATION_TARGETS as readonly string[]).includes(row.targetTab)) {
+    throw new Error("La notificación almacenada no es válida.");
   }
-  return [];
+  if (row.metadata !== null && (typeof row.metadata !== "object" || Array.isArray(row.metadata))) throw new Error("Metadatos no válidos.");
+  return { ...row, type: row.type as AdminNotification["type"], targetTab: row.targetTab as AdminNotification["targetTab"], createdAt: row.createdAt.toISOString(), metadata: row.metadata ?? undefined };
 }
 
-export async function saveNotifications(
-  list: AdminNotification[]
-): Promise<void> {
-  await fs.mkdir(path.dirname(NOTIFICATIONS_FILE), { recursive: true });
-  await fs.writeFile(
-    NOTIFICATIONS_FILE,
-    JSON.stringify(list.slice(0, 200), null, 2),
-    "utf-8"
-  );
+export async function getNotifications(client: NotificationClient = prisma): Promise<AdminNotification[]> {
+  const rows = await client.notification.findMany({ orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 200 });
+  return rows.map(toNotification);
 }
 
+// Inserción individual: nunca reescribe la lista ni restaura JSON después de borrar.
 export async function addNotification(input: {
-  type: NotificationType;
+  type: AdminNotification["type"];
   title: string;
   message: string;
   targetTab: AdminNotification["targetTab"];
   metadata?: Record<string, unknown>;
-}): Promise<AdminNotification> {
-  const list = await getNotifications();
-  const newNotif: AdminNotification = {
-    id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    type: input.type,
-    title: input.title,
-    message: input.message,
-    targetTab: input.targetTab,
-    read: false,
-    createdAt: new Date().toISOString(),
-    metadata: input.metadata,
-  };
-  await saveNotifications([newNotif, ...list]);
-  return newNotif;
+}, client: NotificationClient = prisma): Promise<AdminNotification> {
+  if (!(NOTIFICATION_TYPES as readonly string[]).includes(input.type) || !(NOTIFICATION_TARGETS as readonly string[]).includes(input.targetTab) || typeof input.title !== "string" || typeof input.message !== "string") {
+    throw new ContentValidationError("Notificación no válida.");
+  }
+  const metadata = input.metadata === undefined ? undefined : JSON.parse(JSON.stringify(input.metadata)) as Prisma.InputJsonObject;
+  const row = await client.notification.create({ data: { ...input, metadata } });
+  return toNotification(row);
+}
+
+export async function markNotificationsRead(id?: string): Promise<AdminNotification[]> {
+  return prisma.$transaction(async (tx) => {
+    const result = await tx.notification.updateMany({ where: id ? { id } : {}, data: { read: true } });
+    if (id && result.count === 0) throw new NotificationNotFoundError("Notificación no encontrada.");
+    return getNotifications(tx);
+  });
+}
+
+export async function deleteNotifications(id?: string): Promise<AdminNotification[]> {
+  return prisma.$transaction(async (tx) => {
+    const result = await tx.notification.deleteMany({ where: id ? { id } : {} });
+    if (id && result.count === 0) throw new NotificationNotFoundError("Notificación no encontrada.");
+    return getNotifications(tx);
+  });
 }
