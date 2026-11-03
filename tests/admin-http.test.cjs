@@ -102,6 +102,20 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
     const publicSettings = await call('/api/home-settings');
     assert.equal(publicSettings.headers.get('cache-control'), 'no-store');
     assert.equal(JSON.parse(publicSettings.body).mottoPart1, patch.mottoPart1);
+    assert.equal((await call('/api/special-cases?all=1')).status, 401);
+    const initialCases = JSON.parse((await call('/api/special-cases?all=1', { headers })).body);
+    assert.equal(initialCases.length, 5, 'initial migration preserves the five existing cases');
+    for (const special of initialCases) assert.equal((await call('/api/special-cases/' + special.id, { method: 'DELETE', headers })).status, 200);
+    assert.deepEqual(JSON.parse((await call('/api/special-cases')).body), []);
+    assert.deepEqual(JSON.parse((await call('/api/special-cases?all=1', { headers })).body), []);
+    const specialUpload = await call('/api/special-cases/upload', { method: 'POST', headers, body: form });
+    assert.equal(specialUpload.status, 201);
+    const specialPhoto = JSON.parse(specialUpload.body).url;
+    const specialResponse = await call('/api/special-cases', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ title: 'Synthetic special case', story: 'Story', image: specialPhoto, featured: true, published: true }) });
+    assert.equal(specialResponse.status, 201);
+    const specialId = JSON.parse(specialResponse.body).id;
+    assert.equal((await call('/api/special-cases/' + specialId, { method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ title: 'Edited case', featured: false }) })).status, 200);
+    assert.equal(JSON.parse((await call('/api/special-cases')).body)[0].featured, false);
     await new Promise(resolve => { server.once('exit', resolve); server.kill(); });
     server = launch();
     let restarted = false;
@@ -110,6 +124,15 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
       await new Promise(resolve => setTimeout(resolve, 250));
     }
     assert.equal(restarted, true);
+    const redeploy = require('node:child_process').spawnSync(process.execPath, [require.resolve('prisma/build/index.js'), 'migrate', 'deploy'], { env, encoding: 'utf8', windowsHide: true });
+    assert.equal(redeploy.status, 0, 'repeated migration deploy succeeds without reseeding');
+    const currentCases = JSON.parse((await call('/api/special-cases?all=1', { headers })).body);
+    assert.equal(currentCases.length, 1);
+    assert.equal(currentCases[0].id, specialId);
+    assert.equal(currentCases[0].title, 'Edited case');
+    assert.equal(currentCases[0].image, specialPhoto);
+    assert.equal((await call(specialPhoto)).status, 200);
+    for (const special of initialCases) assert.equal((await db.specialCase.findUnique({ where: { id: special.id } })).isDeleted, true);
     for (const [name, recordId] of Object.entries(intakeIds)) {
       assert.ok(JSON.parse((await call('/api/' + name, { headers })).body).some(row => row.id === recordId), name + ' survives restart');
     }
@@ -125,6 +148,7 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
     assert.equal((await call('/api/dogs', { method: 'POST', headers, body: '{}' })).status, 403);
     assert.equal((await call('/api/home-settings', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify(patch) })).status, 403);
     assert.equal((await call('/api/notifications', { method: 'DELETE', headers })).status, 403);
+    assert.equal((await call('/api/special-cases/' + specialId, { method: 'DELETE', headers })).status, 403);
     for (const [name, recordId] of Object.entries(intakeIds)) assert.equal((await call('/api/' + name + '?id=' + recordId, { method: 'DELETE', headers })).status, 403);
     const logout = await call('/api/auth/logout', { method: 'POST', headers });
     assert.equal(logout.status, 200);

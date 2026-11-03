@@ -3,20 +3,21 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, HeartPulse, MapPin } from "lucide-react";
-import { DEFAULT_IMPACT_CASES, ImpactCase } from "@/data/impact-cases";
+import type { ImpactCase } from "@/data/impact-cases";
 
 export default function ImpactCarousel() {
-  const [cases, setCases] = useState<ImpactCase[]>(DEFAULT_IMPACT_CASES);
+  const [cases, setCases] = useState<ImpactCase[]>([]);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    fetch("/api/special-cases")
-      .then((res) => res.json())
+    fetch("/api/special-cases", { cache: "no-store" })
+      .then(async (res) => { if (!res.ok) throw new Error("Casos no disponibles"); return res.json(); })
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           const featured = data.filter((c: ImpactCase) => c.featured !== false);
-          setCases(featured.length > 0 ? featured : data);
+          setCases(featured);
+          setIndex(0);
         }
       })
       .catch(() => {});

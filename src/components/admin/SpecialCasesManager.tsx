@@ -1,4 +1,5 @@
 "use client";
+import { uploadSpecialCaseForm } from "@/lib/special-case-upload-client";
 
 import { useEffect, useState } from "react";
 import {
@@ -121,10 +122,7 @@ export default function SpecialCasesManager() {
       const fd = new FormData();
       fd.append("file", file);
 
-      const uploadRes = await fetch("/api/special-cases/upload", {
-        method: "POST",
-        body: fd,
-      });
+      const uploadRes = await uploadSpecialCaseForm(fd);
       const uploadData = await uploadRes.json().catch(() => ({}));
       if (!uploadRes.ok || !uploadData.url) {
         throw new Error(uploadData.error || "No se pudo subir la foto");
@@ -170,7 +168,7 @@ export default function SpecialCasesManager() {
         showToast("Portada de Conócenos actualizada correctamente");
       }
     } catch (err) {
-      console.error(err);
+      alert(err instanceof Error ? err.message : "No se pudo completar la operación.");
     } finally {
       setSavingHeroSettings(false);
     }
@@ -179,13 +177,14 @@ export default function SpecialCasesManager() {
   const loadCases = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/special-cases?all=1");
+      const res = await fetch("/api/special-cases?all=1", { cache: "no-store" });
+      if (!res.ok) throw new Error("No se pudieron cargar los casos.");
       const data = await res.json();
       if (Array.isArray(data)) {
         setCases(data);
       }
     } catch (error) {
-      console.error("Error al cargar casos especiales:", error);
+      alert(error instanceof Error ? error.message : "No se pudieron cargar los casos.");
     } finally {
       setLoading(false);
     }
@@ -250,10 +249,7 @@ export default function SpecialCasesManager() {
         const fd = new FormData();
         fd.append("file", file);
 
-        const res = await fetch("/api/special-cases/upload", {
-          method: "POST",
-          body: fd,
-        });
+        const res = await uploadSpecialCaseForm(fd);
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.url) {
@@ -378,6 +374,7 @@ export default function SpecialCasesManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ published: nextPub }),
       });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error || "No se pudo guardar el caso."); }
       if (res.ok) {
         const updated = await res.json();
         setCases((prev) =>
@@ -390,7 +387,7 @@ export default function SpecialCasesManager() {
         );
       }
     } catch (err) {
-      console.error(err);
+      alert(err instanceof Error ? err.message : "No se pudo completar la operación.");
     }
   };
 
@@ -414,7 +411,7 @@ export default function SpecialCasesManager() {
         );
       }
     } catch (err) {
-      console.error(err);
+      alert(err instanceof Error ? err.message : "No se pudo completar la operación.");
     }
   };
 
@@ -428,12 +425,13 @@ export default function SpecialCasesManager() {
       const res = await fetch(`/api/special-cases/${c.id}`, {
         method: "DELETE",
       });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error || "No se pudo eliminar el caso."); }
       if (res.ok) {
         setCases((prev) => prev.filter((item) => item.id !== c.id));
         showToast(`Caso eliminado correctamente`);
       }
     } catch (err) {
-      console.error(err);
+      alert(err instanceof Error ? err.message : "No se pudo completar la operación.");
     }
   };
 

@@ -1,6 +1,6 @@
 // Test double only. Integration mode uses the generated Prisma client instead.
 exports.createMemoryPrisma = function () {
-  const state = { staffUser: [], auditLog: [], loginAttempt: [], notification: [], homeSettings: [], storeOrder: [], adoptionApplication: [], volunteer: [], caseReport: [], dog: [], reportImage: [] };
+  const state = { staffUser: [], auditLog: [], loginAttempt: [], notification: [], homeSettings: [], storeOrder: [], adoptionApplication: [], volunteer: [], caseReport: [], dog: [], reportImage: [], specialCase: [] };
   let queue = Promise.resolve();
   const matches = (row, where = {}) => Object.entries(where).every(([key, value]) => {
     if (key === 'OR') return value.some(clause => matches(row, clause));
@@ -32,6 +32,7 @@ exports.createMemoryPrisma = function () {
         if (table === 'adoptionApplication') Object.assign(defaults, { dogId: null, dogSnapshot: null, evaluatorNotes: null });
         if (table === 'caseReport') Object.assign(defaults, { adminNotes: '', photos: [] });
         if (table === 'dog') Object.assign(defaults, { isDeleted: false });
+        if (table === 'specialCase') Object.assign(defaults, { id: require('node:crypto').randomUUID(), createdAt: new Date(), name: '', subtitle: '', beforeText: '', afterText: '', location: 'Amatitlán, Guatemala', date: '', status: 'Caso Éxito', video: '', featured: true, published: true, draft: false, isDeleted: false, deletedAt: null });
         const row = { ...defaults, ...(table === 'auditLog' ? { id: require('node:crypto').randomUUID(), at: new Date(), actorName: null, detail: null, ip: null } : {}), ...(table === 'notification' ? { id: require('node:crypto').randomUUID(), createdAt: new Date(), read: false, metadata: null } : {}), ...structuredClone(data) };
         state[table].push(row); return structuredClone(row);
       },

@@ -16,7 +16,7 @@ import {
   ChevronRight,
   ShieldCheck,
 } from "lucide-react";
-import { DEFAULT_IMPACT_CASES, ImpactCase } from "@/data/impact-cases";
+import type { ImpactCase } from "@/data/impact-cases";
 
 function getStatusStyle(status?: string) {
   switch (status) {
@@ -32,17 +32,17 @@ function getStatusStyle(status?: string) {
 }
 
 export default function SpecialCasesSection() {
-  const [cases, setCases] = useState<ImpactCase[]>(DEFAULT_IMPACT_CASES);
+  const [cases, setCases] = useState<ImpactCase[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("Todos");
   const [activePhotoByCase, setActivePhotoByCase] = useState<Record<string, number>>({});
   const [selectedCase, setSelectedCase] = useState<ImpactCase | null>(null);
   const [modalPhotoIndex, setModalPhotoIndex] = useState(0);
 
   useEffect(() => {
-    fetch("/api/special-cases")
-      .then((res) => res.json())
+    fetch("/api/special-cases", { cache: "no-store" })
+      .then(async (res) => { if (!res.ok) throw new Error("Casos no disponibles"); return res.json(); })
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setCases(data);
         }
       })
