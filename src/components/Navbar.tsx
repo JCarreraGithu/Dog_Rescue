@@ -38,12 +38,12 @@ export default function Navbar() {
           <Link
             href="/"
             className="flex items-center gap-3 group shrink-0"
-            aria-label="DOG Rescue Guatemala - Ir al inicio"
+            aria-label="DOG rescue Guatemala - Ir al inicio"
           >
             <div className="w-12 h-12 shrink-0 flex items-center justify-center">
               <Image
                 src="/logo-refugio.jpg"
-                alt="Logo oficial DOG Rescue Guatemala"
+                alt="Logo oficial DOG rescue Guatemala"
                 width={48}
                 height={48}
                 priority
@@ -53,7 +53,7 @@ export default function Navbar() {
 
             <div className="flex flex-col justify-center">
               <span className="font-extrabold text-lg text-slate-800 tracking-tight whitespace-nowrap leading-tight">
-                DOG Rescue <span className="text-sky-500">Guatemala</span>
+                DOG rescue <span className="text-sky-500">Guatemala</span>
               </span>
 
               <span className="text-xs text-slate-500 font-medium">
