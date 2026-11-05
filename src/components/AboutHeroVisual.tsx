@@ -13,7 +13,7 @@ type AboutHeroProps = {
 export default function AboutHeroVisual({
   initialImage = "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=1000",
   initialBadgeText = "Amor animalista desde 2020",
-  initialCaptionTitle = "DOG Rescue Guatemala",
+  initialCaptionTitle = "DOG rescue Guatemala",
   initialCaptionSubtitle = "Salvando vidas con amor y dignidad",
 }: AboutHeroProps) {
   const [heroImage, setHeroImage] = useState(initialImage);
