@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { SITE } from "@/config/site";
 import SpecialCasesSection from "@/components/SpecialCasesSection";
+import FoundingFamily from "@/components/FoundingFamily";
 import AboutHeroVisual from "@/components/AboutHeroVisual";
 
 export const metadata: Metadata = {
@@ -81,37 +82,6 @@ const VALUES = [
       "Amor inquebrantable, lealtad a la causa animal, transparencia en cada proceso, devoción en el cuidado diario y servicio desinteresado por quienes no tienen voz para pedir auxilio.",
     badge: "Principios",
     color: "from-emerald-500/10 to-emerald-600/5 text-emerald-700 border-emerald-200",
-  },
-];
-
-const TIMELINE = [
-  {
-    period: "La Semilla",
-    title: "Una vocación que nació del corazón",
-    description:
-      "Nacer un 4 de octubre no es una casualidad. Durante toda la vida existió una profunda admiración por la nobleza y lealtad de los perritos. Ese amor fue sembrado con dedicación en los hijos, forjando el alma de lo que más adelante sería una gran causa comunitaria.",
-    tag: "Vocación de vida",
-  },
-  {
-    period: "2020 • En Pandemia",
-    title: "Nace DOG rescue Guatemala en Amatitlán",
-    description:
-      "En medio de la incertidumbre mundial de la pandemia, surge la plataforma en Facebook para alzar la voz contra el abandono de perros en las calles de nuestro querido Amatitlán. La respuesta de los vecinos y voluntarios encendió la chispa de la organización.",
-    tag: "Amatitlán",
-  },
-  {
-    period: "2021 - 2023",
-    title: "De iniciativa familiar a causa nacional",
-    description:
-      "El esfuerzo del hogar trascendió las fronteras del municipio. Se sumaron rescates complejos en diferentes departamentos de Guatemala, estableciendo expedientes médicos caninos, esterilizaciones y protocolos de adopción rigurosos.",
-    tag: "Expansión",
-  },
-  {
-    period: "Hoy y Hacia el Futuro",
-    title: "Una comunidad que salva vidas cada día",
-    description:
-      "Más de 88 mil personas nos acompañan en redes. Hoy seguimos firmes con la convicción de que llegaremos mucho más lejos, ampliando nuestra capacidad de ayuda y honrando el cuidado de la creación de Dios.",
-    tag: "Esperanza viva",
   },
 ];
 
@@ -330,6 +300,8 @@ export default function ConocenosPage() {
         </div>
       </section>
 
+      <FoundingFamily />
+
       {/* 4. MISIÓN, VISIÓN Y VALORES (INSTITUCIONAL PROFESIONAL) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
         <div className="text-center max-w-2xl mx-auto mb-12">
@@ -410,43 +382,6 @@ export default function ConocenosPage() {
               );
             })}
           </div>
-        </div>
-      </section>
-
-      {/* 6. LÍNEA DEL TIEMPO: EVOLUCIÓN HISTÓRICA */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
-        <div className="text-center max-w-xl mx-auto mb-14">
-          <span className="text-xs font-bold text-sky-600 tracking-wider uppercase bg-sky-50 px-3.5 py-1.5 rounded-full border border-sky-200">
-            Nuestra Evolución
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-3">
-            Línea del tiempo
-          </h2>
-          <p className="text-slate-600 text-sm mt-2">
-            El camino recorrido desde Amatitlán hasta consolidarnos como un referente de rescate en el país.
-          </p>
-        </div>
-
-        <div className="relative border-l-2 border-sky-300 ml-4 sm:ml-8 space-y-12">
-          {TIMELINE.map((item, index) => (
-            <div key={index} className="pl-6 sm:pl-10 relative group">
-              {/* Punto en la línea de tiempo */}
-              <span className="absolute -left-[11px] top-1.5 w-5 h-5 rounded-full bg-white border-4 border-sky-500 shadow-md group-hover:border-amber-500 transition-colors" />
-
-              <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-xs hover:shadow-md transition">
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                  <span className="text-xs font-black text-sky-600 uppercase tracking-wider">
-                    {item.period}
-                  </span>
-                  <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
-                    {item.tag}
-                  </span>
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{item.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 

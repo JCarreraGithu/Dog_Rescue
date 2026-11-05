@@ -118,6 +118,24 @@ test('remaining administrative modules use only PostgreSQL', { skip: !url }, asy
       assert.equal((await stats.PUT(request('transparency', 'PUT', { key: 'rescues_count', value: 'x' }))).status, 400);
       assert.equal((await db.transparencyStat.findUnique({ where: { key: 'rescues_count' } })).value, 600);
     });
+    await t.test('About carousel and exactly three founders preserve legacy settings, ordering and deletions', async () => {
+      const before = await (await about.GET()).json();
+      assert.equal(before.carousel[0].url, before.heroImage);
+      const first = { id: 'test-first', url: 'https://example.invalid/first.jpg', title: 'First', subtitle: 'Caption', badge: '' };
+      const second = { ...first, id: 'test-second', title: 'Second', url: 'https://example.invalid/second.jpg' };
+      assert.equal((await about.PUT(request('about-settings', 'PUT', { carousel: [first, second] }))).status, 200);
+      assert.equal((await about.PUT(request('about-settings', 'PUT', { carousel: [{ ...second, title: 'Edited' }, first] }))).status, 200);
+      let result = await (await about.GET()).json(); assert.deepEqual(result.carousel.map(s => s.id), [second.id, first.id]); assert.equal(result.carousel[0].title, 'Edited');
+      assert.equal((await about.PUT(request('about-settings', 'PUT', { carousel: [first] }))).status, 200);
+      const family = ['Odra test', 'Hijo uno test', 'Hijo dos test'].map(name => ({ name, image: first.url }));
+      assert.equal((await about.PUT(request('about-settings', 'PUT', { family }))).status, 200);
+      result = await (await about.GET()).json(); assert.deepEqual(result.family, family); assert.equal(result.heroImage, before.heroImage); assert.equal(result.carousel.length, 1);
+      for (const invalid of [{ family: [] }, { family: [...family, family[0]] }, { carousel: [first, first] }, { carousel: [{ ...first, url: '/uploads/nonexistent.jpg' }] }, { carousel: [{ ...first, url: 'javascript:alert(1)' }] }]) assert.equal((await about.PUT(request('about-settings', 'PUT', invalid))).status, 400);
+      assert.equal((await about.PUT(request('about-settings', 'PUT', { carousel: [] }))).status, 200);
+      assert.deepEqual((await (await about.GET()).json()).carousel, []);
+      const fresh = new (require('@prisma/client').PrismaClient)({ datasourceUrl: url, log: [] });
+      try { const row = await fresh.aboutSettings.findUnique({ where: { id: 'about' } }); assert.deepEqual(row.carousel, []); assert.deepEqual(row.family, family); } finally { await fresh.$disconnect(); }
+    });
     await t.test('legacy import preserves documents, medical IDs and photos, is idempotent and refuses conflicts', async () => {
       const { importLegacyDogs, validateLegacyDogs } = await import('../scripts/import-admin-content.mjs');
       const directory = fs.mkdtempSync(path.join(path.resolve('.private-tools'), 'legacy-assets-'));

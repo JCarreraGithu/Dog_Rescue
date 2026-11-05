@@ -150,6 +150,10 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
     assert.equal((await call('/api/inventory', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ id: persistInventory.id, quantityChange: 3 }) })).status, 200);
     assert.equal((await call('/api/transparency', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ rescues_count: 654 }) })).status, 200);
     assert.equal((await call('/api/about-settings', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ heroCaptionTitle: 'HTTP persistent caption', heroImage: dogPhoto }) })).status, 200);
+    const aboutSlides = [{ id: 'http-slide-b', url: dogPhoto, title: 'Segunda editada', subtitle: 'Historia', badge: '' }, { id: 'http-slide-a', url: imageUrl, title: 'Primera', subtitle: '', badge: 'Refugio' }];
+    const founders = ['Doña Odra test', 'Primer hijo test', 'Segundo hijo test'].map(name => ({ name, image: dogPhoto }));
+    assert.equal((await call('/api/about-settings', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ carousel: aboutSlides, family: founders }) })).status, 200);
+    assert.equal((await call('/api/about-settings', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ carousel: [aboutSlides[1]] }) })).status, 200);
     await new Promise(resolve => { server.once('exit', resolve); server.kill(); });
     server = launch();
     let restarted = false;
@@ -163,6 +167,10 @@ test('HTTP production server: public pages, private APIs, login, roles and logou
     assert.ok(!JSON.parse((await call('/api/dogs')).body).some(row => row.id === removedDogId));
     assert.ok(!JSON.parse((await call('/api/dogs?deletedOnly=true', { headers })).body).some(row => row.id === removedDogId));
     assert.equal((await db.dog.findUnique({ where: { id: removedDogId } })).isArchived, true);
+    const persistedAbout = JSON.parse((await call('/api/about-settings')).body);
+    assert.deepEqual(persistedAbout.carousel, [aboutSlides[1]]);
+    assert.deepEqual(persistedAbout.family, founders);
+    const aboutPage = await call('/conocenos'); assert.equal(aboutPage.status, 200); assert.ok(aboutPage.body.includes('Familia Fundadora')); assert.ok(aboutPage.body.includes('Nuestra historia en fotografías'));
     const persistedProducts = JSON.parse((await call('/api/products')).body);
     assert.equal(persistedProducts.find(p => p.id === persistProduct.id).stock, 10);
     assert.equal(persistedProducts.find(p => p.id === persistProduct.id).price, 21);

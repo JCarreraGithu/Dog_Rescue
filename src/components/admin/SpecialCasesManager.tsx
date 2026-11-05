@@ -1,4 +1,5 @@
 "use client";
+import AboutContentManager from "@/components/admin/AboutContentManager";
 import { uploadSpecialCaseForm } from "@/lib/special-case-upload-client";
 
 import { useEffect, useState } from "react";
@@ -77,101 +78,9 @@ export default function SpecialCasesManager() {
   const [errorMsg, setErrorMsg] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
-  // Estado para la Foto Principal de la Portada de /conocenos
-  const [aboutSettings, setAboutSettings] = useState({
-    heroImage:
-      "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=1000",
-    heroBadgeText: "Amor animalista desde 2020",
-    heroCaptionTitle: "DOG rescue Guatemala",
-    heroCaptionSubtitle: "Salvando vidas con amor y dignidad",
-  });
-  const [uploadingHeroPhoto, setUploadingHeroPhoto] = useState(false);
-  const [savingHeroSettings, setSavingHeroSettings] = useState(false);
-
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(""), 3500);
-  };
-
-  const loadAboutSettings = async () => {
-    try {
-      const res = await fetch("/api/about-settings");
-      const data = await res.json();
-      if (data && typeof data === "object" && data.heroImage) {
-        setAboutSettings({
-          heroImage: data.heroImage,
-          heroBadgeText: data.heroBadgeText || "Amor animalista desde 2020",
-          heroCaptionTitle: data.heroCaptionTitle || "DOG rescue Guatemala",
-          heroCaptionSubtitle:
-            data.heroCaptionSubtitle || "Salvando vidas con amor y dignidad",
-        });
-      }
-    } catch (error) {
-      console.error("Error al cargar foto de Conócenos:", error);
-    }
-  };
-
-  const handleHeroFileUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingHeroPhoto(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-
-      const uploadRes = await uploadSpecialCaseForm(fd);
-      const uploadData = await uploadRes.json().catch(() => ({}));
-      if (!uploadRes.ok || !uploadData.url) {
-        throw new Error(uploadData.error || "No se pudo subir la foto");
-      }
-
-      const nextSettings = {
-        ...aboutSettings,
-        heroImage: uploadData.url,
-      };
-      setAboutSettings(nextSettings);
-
-      // Guardar inmediatamente para que se refleje al instante en /conocenos
-      const saveRes = await fetch("/api/about-settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nextSettings),
-      });
-      if (saveRes.ok) {
-        showToast("¡Foto principal de Conócenos subida y actualizada!");
-      }
-    } catch (err) {
-      alert(
-        err instanceof Error
-          ? err.message
-          : "Error al subir la foto de Conócenos"
-      );
-    } finally {
-      setUploadingHeroPhoto(false);
-      e.target.value = "";
-    }
-  };
-
-  const handleSaveHeroSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingHeroSettings(true);
-    try {
-      const res = await fetch("/api/about-settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(aboutSettings),
-      });
-      if (res.ok) {
-        showToast("Portada de Conócenos actualizada correctamente");
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "No se pudo completar la operación.");
-    } finally {
-      setSavingHeroSettings(false);
-    }
   };
 
   const loadCases = async () => {
@@ -191,7 +100,6 @@ export default function SpecialCasesManager() {
   };
 
   useEffect(() => {
-    loadAboutSettings();
     loadCases();
   }, []);
 
@@ -465,155 +373,7 @@ export default function SpecialCasesManager() {
         </div>
       )}
 
-      {/* SECCIÓN 1: FOTO PRINCIPAL DE LA PORTADA DE CONÓCENOS */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-          <div>
-            <div className="inline-flex items-center gap-2 text-sky-600 font-bold text-xs uppercase tracking-wider bg-sky-50 px-3 py-1 rounded-full mb-1.5 border border-sky-200">
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span>Portada de Conócenos (/conocenos)</span>
-            </div>
-            <h2 className="text-xl font-extrabold text-slate-900">
-              Foto Principal de &ldquo;Nuestra Historia&rdquo;
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Esta es la fotografía principal que aparece al lado de &ldquo;Un propósito que nació del corazón&rdquo; en la pestaña Conócenos.
-            </p>
-          </div>
-
-          <label className="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-sm transition shrink-0 cursor-pointer">
-            <Upload className="w-4 h-4" />
-            <span>
-              {uploadingHeroPhoto
-                ? "Subiendo foto..."
-                : "Subir Foto desde mi Computadora"}
-            </span>
-            <input
-              type="file"
-              accept="image/*"
-              disabled={uploadingHeroPhoto}
-              onChange={handleHeroFileUpload}
-              className="hidden"
-            />
-          </label>
-        </div>
-
-        <form
-          onSubmit={handleSaveHeroSettings}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center"
-        >
-          {/* Vista previa idéntica a como se ve en /conocenos */}
-          <div className="lg:col-span-5">
-            <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 shadow-md bg-slate-900 aspect-[4/3]">
-              <img
-                src={aboutSettings.heroImage}
-                alt="Vista previa portada Conócenos"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-              <div className="absolute top-3 right-3 bg-amber-400 text-slate-950 font-black text-[11px] px-3 py-1 rounded-xl shadow">
-                {aboutSettings.heroBadgeText}
-              </div>
-              <div className="absolute bottom-3 left-3 right-3 bg-slate-900/90 backdrop-blur-md p-3 rounded-xl border border-white/15">
-                <p className="text-[10px] uppercase tracking-wider text-sky-400 font-bold">
-                  {aboutSettings.heroCaptionTitle}
-                </p>
-                <p className="text-xs font-semibold text-white mt-0.5">
-                  {aboutSettings.heroCaptionSubtitle}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Controles de URL y textos */}
-          <div className="lg:col-span-7 space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                URL o Ruta de la Foto Principal
-              </label>
-              <input
-                type="text"
-                value={aboutSettings.heroImage}
-                onChange={(e) =>
-                  setAboutSettings({
-                    ...aboutSettings,
-                    heroImage: e.target.value,
-                  })
-                }
-                placeholder="Sube una foto con el botón azul de arriba o pega un enlace https://..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Título sobre la foto
-                </label>
-                <input
-                  type="text"
-                  value={aboutSettings.heroCaptionTitle}
-                  onChange={(e) =>
-                    setAboutSettings({
-                      ...aboutSettings,
-                      heroCaptionTitle: e.target.value,
-                    })
-                  }
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Insignia Amarilla Superior
-                </label>
-                <input
-                  type="text"
-                  value={aboutSettings.heroBadgeText}
-                  onChange={(e) =>
-                    setAboutSettings({
-                      ...aboutSettings,
-                      heroBadgeText: e.target.value,
-                    })
-                  }
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Frase debajo del título en la foto
-              </label>
-              <input
-                type="text"
-                value={aboutSettings.heroCaptionSubtitle}
-                onChange={(e) =>
-                  setAboutSettings({
-                    ...aboutSettings,
-                    heroCaptionSubtitle: e.target.value,
-                  })
-                }
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
-
-            <div className="flex justify-end pt-1">
-              <button
-                type="submit"
-                disabled={savingHeroSettings || uploadingHeroPhoto}
-                className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer"
-              >
-                <Check className="w-4 h-4 text-emerald-400" />
-                <span>
-                  {savingHeroSettings
-                    ? "Guardando..."
-                    : "Guardar Cambios de Portada Conócenos"}
-                </span>
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
+      <AboutContentManager />
 
       {/* CABECERA Y KPIs DE CASOS ESPECIALES */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">

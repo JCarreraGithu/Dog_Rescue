@@ -283,6 +283,8 @@ model AboutSettings {
   heroBadgeText       String
   heroCaptionTitle    String
   heroCaptionSubtitle String
+  carousel            Json?
+  family              Json?
   updatedAt           DateTime @default(now()) @updatedAt @db.Timestamptz(3)
 }
 
