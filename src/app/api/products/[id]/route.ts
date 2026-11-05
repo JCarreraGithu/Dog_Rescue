@@ -1,127 +1,34 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@/lib/auth";
-import { getUserFromToken } from "@/lib/staff-store";
-import { getStoreProducts, saveStoreProducts, sanitizeCategory } from "@/lib/store";
+import { prisma } from "@/lib/db";
+import { checkContentAccess } from "@/lib/content-auth";
+import { body, id, IntakeError } from "@/lib/intake-validation";
+import { intakeFailure, intakeHeaders as headers } from "@/lib/intake-response";
+import { productInput, productView } from "@/lib/store";
+export const dynamic = "force-dynamic";
 
-async function isAdminAuthenticated() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return getUserFromToken(token);
-}
-
-// ACTUALIZAR PRODUCTO EXISTENTE (ADMIN)
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+type Context = { params: Promise<{ id: string }> };
+export async function PUT(request: Request, context: Context) {
   try {
-    if (!(await isAdminAuthenticated())) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const { id } = await params;
-    const body = await request.json();
-    const products = getStoreProducts();
-    const index = products.findIndex((p) => p.id === id);
-
-    if (index === -1) {
-      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
-    }
-
-    const current = products[index];
-
-    const variants =
-      body.variants !== undefined
-        ? Array.isArray(body.variants)
-          ? body.variants.map((v: unknown) => String(v).trim()).filter(Boolean)
-          : typeof body.variants === "string"
-            ? body.variants
-                .split(",")
-                .map((v: string) => v.trim())
-                .filter(Boolean)
-            : []
-        : current.variants;
-
-    const category =
-      body.category !== undefined ? sanitizeCategory(body.category) : current.category;
-
-    const updatedProduct = {
-      ...current,
-      name:
-        typeof body.name === "string" && body.name.trim()
-          ? body.name.trim()
-          : current.name,
-      description:
-        typeof body.description === "string"
-          ? body.description.trim()
-          : current.description,
-      price:
-        body.price !== undefined && !isNaN(Number(body.price)) && Number(body.price) > 0
-          ? Number(body.price)
-          : current.price,
-      category,
-      variantLabel:
-        body.variantLabel !== undefined
-          ? typeof body.variantLabel === "string" && body.variantLabel.trim()
-            ? body.variantLabel.trim()
-            : undefined
-          : current.variantLabel,
-      variants: variants && variants.length > 0 ? variants : undefined,
-      image:
-        body.image !== undefined
-          ? typeof body.image === "string" && body.image.trim()
-            ? body.image.trim()
-            : undefined
-          : current.image,
-      stock:
-        body.stock !== undefined && !isNaN(Number(body.stock))
-          ? Math.max(0, Number(body.stock))
-          : current.stock,
-      available:
-        body.available !== undefined ? Boolean(body.available) : current.available,
-      featured:
-        body.featured !== undefined ? Boolean(body.featured) : current.featured,
-      badge:
-        body.badge !== undefined
-          ? typeof body.badge === "string" && body.badge.trim()
-            ? body.badge.trim()
-            : undefined
-          : current.badge,
-    };
-
-    products[index] = updatedProduct;
-    saveStoreProducts(products);
-
-    return NextResponse.json(updatedProduct);
-  } catch (error) {
-    console.error("Error al actualizar producto:", error);
-    return NextResponse.json({ error: "Error al actualizar producto" }, { status: 500 });
-  }
+    const denied = await checkContentAccess(request, "/api/products"); if (denied) return denied;
+    const productId = id((await context.params).id), input = await body(request);
+    const stockDelta = input.stockChange === undefined ? undefined : Number(input.stockChange);
+    if (stockDelta !== undefined && (!Number.isSafeInteger(stockDelta) || Math.abs(stockDelta) > 10000 || input.stock !== undefined)) throw new IntakeError("Cambio de stock inválido.");
+    const patch = productInput(stockDelta === undefined ? input : { ...input, stock: 0 });
+    const row = await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "StoreProduct" WHERE id = ${productId} FOR UPDATE`;
+      const current = await tx.storeProduct.findUnique({ where: { id: productId } });
+      if (!current || current.isDeleted) throw new IntakeError("Producto no encontrado.", 404);
+      if (stockDelta !== undefined) { patch.stock = Math.max(0, current.stock + stockDelta); if (patch.stock === 0) patch.available = false; }
+      return tx.storeProduct.update({ where: { id: productId }, data: patch });
+    });
+    return NextResponse.json(productView(row), { headers });
+  } catch (error) { return intakeFailure(error); }
 }
-
-// ELIMINAR PRODUCTO DE LA TIENDA (ADMIN)
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: Request, context: Context) {
   try {
-    if (!(await isAdminAuthenticated())) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const { id } = await params;
-    const products = getStoreProducts();
-    const filtered = products.filter((p) => p.id !== id);
-
-    if (filtered.length === products.length) {
-      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
-    }
-
-    saveStoreProducts(filtered);
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error("Error al eliminar producto:", error);
-    return NextResponse.json({ error: "Error al eliminar producto" }, { status: 500 });
-  }
+    const denied = await checkContentAccess(request, "/api/products"); if (denied) return denied;
+    const result = await prisma.storeProduct.updateMany({ where: { id: id((await context.params).id), isDeleted: false }, data: { isDeleted: true, available: false } });
+    if (!result.count) throw new IntakeError("Producto no encontrado.", 404);
+    return NextResponse.json({ ok: true }, { headers });
+  } catch (error) { return intakeFailure(error); }
 }

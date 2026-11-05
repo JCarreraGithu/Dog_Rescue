@@ -93,14 +93,11 @@ test('all four intake modules use durable records and atomic notifications', asy
     assert.equal((await apis['case-reports'].PUT(request('case-reports', 'PUT', { id: created['case-reports'].id, status: 'Rescatado', adminNotes: 'Rescue notes' }, cookie))).status, 200);
     assert.equal((await store.getReports())[0].adminNotes, 'Rescue notes');
   });
-  await t.test('catalog fallback dog IDs persist as snapshots without inventing Dog records', async () => {
+  await t.test('static catalogue IDs cannot accept applications after deletion or when absent from PostgreSQL', async () => {
+    const before = (await db.adoptionApplication.findMany()).length;
     const response = await apis.applications.POST(request('applications', 'POST', { ...application, dogId: 'demo-dog-1' }));
-    assert.equal(response.status, 201);
-    const row = await response.json();
-    assert.equal(row.dogId, 'demo-dog-1');
-    assert.ok(row.dog?.name);
-    assert.equal(await db.dog.findUnique({ where: { id: 'demo-dog-1' } }), null);
-    assert.equal((await apis.applications.POST(request('applications', 'POST', { ...application, dogId: 'nonexistent-dog' }))).status, 404);
+    assert.equal(response.status, 404);
+    assert.equal((await db.adoptionApplication.findMany()).length, before);
   });
   await t.test('malformed input is rejected and database failures never return fake success', async () => {
     for (const [name, api] of Object.entries(apis)) assert.equal((await api.POST(request(name, 'POST', {}))).status, 400);

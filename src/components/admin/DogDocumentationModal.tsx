@@ -1,4 +1,5 @@
 "use client";
+import { uploadSpecialCaseForm } from "@/lib/special-case-upload-client";
 
 import { useEffect, useState } from "react";
 import type { LocalDog } from "@/lib/local-records";
@@ -130,10 +131,7 @@ export default function DogDocumentationModal({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/dogs/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await uploadSpecialCaseForm(formData, "/api/dogs/upload", true);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al subir imagen");
       return data.url as string;

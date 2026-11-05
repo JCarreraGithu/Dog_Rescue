@@ -27,7 +27,7 @@ import {
   ChevronUp,
   BookOpen,
 } from "lucide-react";
-import { DEFAULT_DOGS, type DemoDog } from "@/data/default-dogs";
+import type { DemoDog } from "@/data/default-dogs";
 import { SITE } from "@/config/site";
 
 const FIVE_FREEDOMS = [
@@ -66,7 +66,7 @@ function CatalogoContent() {
   const searchParams = useSearchParams();
   const initialDogId = searchParams.get("dogId");
 
-  const [dogs, setDogs] = useState<DemoDog[]>(DEFAULT_DOGS);
+  const [dogs, setDogs] = useState<DemoDog[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -98,7 +98,7 @@ function CatalogoContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  // Cargar perritos del backend o usar respaldo seguro
+  // PostgreSQL es la única fuente del catálogo.
   const fetchDogs = async () => {
     setLoading(true);
     try {
@@ -108,35 +108,26 @@ function CatalogoContent() {
       if (temperamentFilter !== "Todos") query.set("temperament", temperamentFilter);
       query.set("status", "En Adopción");
 
-      const res = await fetch(`/api/dogs?${query.toString()}`);
+      const res = await fetch(`/api/dogs?${query.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Error en servidor");
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setDogs(data);
         if (initialDogId && !selectedDog) {
           const found = data.find((d: DemoDog) => d.id === initialDogId);
           if (found) setSelectedDog(found);
         }
       } else {
-        // Filtrado local sobre los datos por defecto si la base está vacía o filtra
-        setDogs(filterLocalDogs(DEFAULT_DOGS, ageFilter, sizeFilter, temperamentFilter));
+        // Un catálogo vacío se conserva vacío.
+        setDogs([]);
       }
     } catch {
-      // Si la API falla o no hay conexión, usamos los datos locales garantizados
-      setDogs(filterLocalDogs(DEFAULT_DOGS, ageFilter, sizeFilter, temperamentFilter));
+      // Un error nunca vuelve a publicar registros locales.
+      setDogs([]);
     } finally {
       setLoading(false);
     }
   };
-
-  function filterLocalDogs(list: DemoDog[], age: string, size: string, tmp: string) {
-    return list.filter((d) => {
-      if (age !== "Todos" && d.ageCategory !== age) return false;
-      if (size !== "Todos" && d.size !== size) return false;
-      if (tmp !== "Todos" && !d.temperament.toLowerCase().includes(tmp.toLowerCase())) return false;
-      return true;
-    });
-  }
 
   useEffect(() => {
     fetchDogs();
@@ -145,7 +136,7 @@ function CatalogoContent() {
   // Selección automática si viene en la URL
   useEffect(() => {
     if (initialDogId && !selectedDog) {
-      const found = dogs.find((d) => d.id === initialDogId) || DEFAULT_DOGS.find((d) => d.id === initialDogId);
+      const found = dogs.find((d) => d.id === initialDogId);
       if (found) setSelectedDog(found);
     }
   }, [initialDogId, dogs]);

@@ -5,8 +5,6 @@ import { checkContentAccess } from '@/lib/content-auth';
 import { getApplications, applicationView, dogInclude } from '@/lib/intake-store';
 import { body, id, text, age, choice, APPLICATION_STATUSES, IntakeError } from '@/lib/intake-validation';
 import { intakeFailure, intakeHeaders as headers } from '@/lib/intake-response';
-import { DEFAULT_DOGS } from '@/data/default-dogs';
-import bundledDogs from '@/data/dogs.json';
 export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try { const denied = await checkContentAccess(request, '/api/applications'); if (denied) return denied; return NextResponse.json(await getApplications(), { headers }); }
@@ -20,10 +18,8 @@ export async function POST(request: Request) {
     const petAccess = choice(data.petAccess, ['Todos', 'Algunos']);
     const application = await prisma.$transaction(async tx => {
       const dog = await tx.dog.findUnique({ where: { id: dogId } });
-      const bundled = [...DEFAULT_DOGS, ...bundledDogs].find(d => d.id === dogId);
-      if (dog?.isDeleted || (!dog && (!bundled || ('isDeleted' in bundled && bundled.isDeleted)))) throw new IntakeError('Perrito no encontrado en el catálogo.', 404);
-      const info = dog ?? bundled;
-      if (!info) throw new IntakeError('Perrito no encontrado.', 404);
+      if (!dog || dog.isDeleted || dog.isArchived) throw new IntakeError('Perrito no encontrado en el catálogo.', 404);
+      const info = dog;
       const row = await tx.adoptionApplication.create({ data: { dogId: dog ? dog.id : null, dogSnapshot: { id: dogId, name: info.name, photoUrl: info.photoUrl }, applicantName, applicantPhone, applicantAge, petAccess, petsAllowed: data.petsAllowed as boolean, safeHome: data.safeHome as boolean, enoughSpace: data.enoughSpace as boolean, knowsFiveFreedoms: data.knowsFiveFreedoms as boolean, commitsToWelfare: data.commitsToWelfare as boolean, commitsToSterilize: data.commitsToSterilize as boolean, status: 'En Evaluación' }, include: dogInclude });
       await addNotification({ type: 'adoption', title: 'Nueva Solicitud de Adopción: ' + info.name, message: applicantName + ' (' + applicantAge + ' años • Tel: ' + applicantPhone + ') envió postulación para adoptar a ' + info.name + ' y aceptó el Acta de Compromiso.', targetTab: 'applications', metadata: { applicationId: row.id, dogId, dogName: info.name, applicantName, applicantPhone } }, tx);
       return applicationView(row);

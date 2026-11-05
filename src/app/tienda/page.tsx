@@ -18,7 +18,7 @@ import {
   Lollipop,
   Truck,
 } from "lucide-react";
-import { DEFAULT_PRODUCTS, type Product, type ProductCategory } from "@/data/products";
+import { type Product, type ProductCategory } from "@/data/products";
 import { useCart } from "@/components/CartProvider";
 
 const CATEGORIES: Array<{ id: "Todos" | ProductCategory; label: string; desc: string }> = [
@@ -216,16 +216,16 @@ function ProductCard({ product }: { product: Product }) {
 }
 
 export default function TiendaPage() {
-  const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState<"Todos" | ProductCategory>("Todos");
   const [search, setSearch] = useState("");
   const { count, total, openCart } = useCart();
 
   useEffect(() => {
-    fetch("/api/products")
-      .then((res) => res.json())
+    fetch("/api/products", { cache: "no-store" })
+      .then((res) => { if (!res.ok) throw new Error("Catálogo no disponible"); return res.json(); })
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setProducts(data);
         }
       })

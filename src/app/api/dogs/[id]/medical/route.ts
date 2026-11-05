@@ -1,111 +1,21 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { SESSION_COOKIE } from "@/lib/auth";
-import { getUserFromToken } from "@/lib/staff-store";
-import { getLocalDogs, saveLocalDogs } from "@/lib/local-records";
-
-async function isAdminAuthenticated() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return getUserFromToken(token);
-}
-
-// AGREGAR REGISTRO MÉDICO O PROGRAMAR CITA
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+import { checkContentAccess } from "@/lib/content-auth";
+import { body, id, IntakeError } from "@/lib/intake-validation";
+import { intakeFailure, intakeHeaders as headers } from "@/lib/intake-response";
+export const dynamic = "force-dynamic";
+type Context = { params: Promise<{ id: string }> };
+import { medicalInput } from "@/lib/dog-store";
+export async function POST(request: Request, context: Context) {
   try {
-    if (!(await isAdminAuthenticated())) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const { id } = await params;
-    const body = await request.json();
-
-    if (
-      typeof body?.title !== "string" ||
-      !body.title.trim() ||
-      typeof body?.date !== "string" ||
-      !body.date.trim()
-    ) {
-      return NextResponse.json(
-        { error: "El título y la fecha son obligatorios" },
-        { status: 400 }
-      );
-    }
-
-    const date = new Date(body.date);
-    if (Number.isNaN(date.getTime())) {
-      return NextResponse.json(
-        { error: "La fecha ingresada no es válida" },
-        { status: 400 }
-      );
-    }
-
-    const allowedStatuses = ["Programado", "Pendiente", "Completado"];
-    const status = allowedStatuses.includes(body.status)
-      ? body.status
-      : "Programado";
-
-    const newRecord = {
-      id: `med-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      dogId: id,
-      type: body.type || "Consulta",
-      title: body.title.trim(),
-      description: body.description || "",
-      date: date.toISOString(),
-      nextDueDate: body.nextDueDate ? new Date(body.nextDueDate).toISOString() : null,
-      vetName: body.vetName || "Dra. María Morales",
-      status,
-    };
-
-    const localDogs = await getLocalDogs();
-    const dogIdx = localDogs.findIndex((d) => d.id === id);
-
-    if (dogIdx !== -1) {
-      const records = Array.isArray(localDogs[dogIdx].medicalRecords)
-        ? localDogs[dogIdx].medicalRecords
-        : [];
-      records.unshift(newRecord);
-      localDogs[dogIdx].medicalRecords = records;
-      await saveLocalDogs(localDogs);
-    }
-
-    if (process.env.DATABASE_URL) {
-      try {
-        const dbRecord = await prisma.medicalRecord.create({
-          data: {
-            dogId: id,
-            type: newRecord.type,
-            title: newRecord.title,
-            description: newRecord.description,
-            date,
-            nextDueDate: body.nextDueDate ? new Date(body.nextDueDate) : null,
-            vetName: newRecord.vetName,
-            status: newRecord.status,
-          },
-        });
-        return NextResponse.json(dbRecord, { status: 201 });
-      } catch {
-        // Fallback to local
-      }
-    }
-
-    if (dogIdx === -1) {
-      return NextResponse.json(
-        { error: "Perrito no encontrado" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(newRecord, { status: 201 });
-  } catch (error) {
-    console.error("Error al agregar registro médico:", error);
-    return NextResponse.json(
-      { error: "Error al agregar registro médico" },
-      { status: 500 }
-    );
-  }
+    const denied = await checkContentAccess(request, "/api/dogs/medical"); if (denied) return denied;
+    const dogId = id((await context.params).id), patch = medicalInput(await body(request), true);
+    const row = await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "Dog" WHERE id = ${dogId} FOR UPDATE`;
+      const dog = await tx.dog.findUnique({ where: { id: dogId } });
+      if (!dog || dog.isDeleted) throw new IntakeError("Perrito no encontrado.", 404);
+      return tx.medicalRecord.create({ data: { dogId, type: "Consulta", description: "", vetName: "Dra. María Morales", status: "Programado", ...patch } as import("@prisma/client").Prisma.MedicalRecordUncheckedCreateInput });
+    });
+    return NextResponse.json(row, { status: 201, headers });
+  } catch (error) { return intakeFailure(error); }
 }

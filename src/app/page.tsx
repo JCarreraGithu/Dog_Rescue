@@ -6,7 +6,6 @@ import type { TransparencyView } from "@/lib/view-types";
 import type { DemoDog } from "@/data/default-dogs";
 import Link from "next/link";
 import ImpactCarousel from "@/components/ImpactCarousel";
-import { DEFAULT_DOGS } from "@/data/default-dogs";
 import {
   HomeHeroSettings,
   DEFAULT_HOME_HERO_SETTINGS,
@@ -35,7 +34,7 @@ export default function HomePage() {
   // Estados para contadores de transparencia
   const [stats, setStats] = useState<TransparencyView[]>([]);
   // Estados para perros destacados
-  const [featuredDogs, setFeaturedDogs] = useState<DemoDog[]>(DEFAULT_DOGS.slice(0, 3));
+  const [featuredDogs, setFeaturedDogs] = useState<DemoDog[]>([]);
   // Configuración del lema y portada
   const [heroSettings, setHeroSettings] = useState<HomeHeroSettings>(DEFAULT_HOME_HERO_SETTINGS);
   
@@ -85,7 +84,7 @@ export default function HomePage() {
       })
       .catch(() => {});
 
-    fetch("/api/dogs?status=En Adopción")
+    fetch("/api/dogs?status=En Adopción", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {

@@ -217,16 +217,19 @@ export default function StoreManager() {
     return `https://wa.me/${gtPhone}?text=${encodeURIComponent(msg)}`;
   };
 
+  const [productError, setProductError] = useState("");
   const loadProducts = async () => {
+    setProductError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/products");
+      const res = await fetch("/api/products", { cache: "no-store" });
+      if (!res.ok) throw new Error("No se pudo consultar el catálogo.");
       const data = await res.json();
       if (Array.isArray(data)) {
         setProducts(data);
       }
     } catch (err) {
-      console.error(err);
+      setProductError(err instanceof Error ? err.message : "No se pudo consultar el catálogo.");
     } finally {
       setLoading(false);
     }
@@ -407,30 +410,34 @@ export default function StoreManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ available: !product.available }),
       });
+      if (!res.ok) throw new Error((await res.json()).error || "No se pudo guardar el producto.");
       if (res.ok) {
         await loadProducts();
         showSuccess(`Estado de "${product.name}" actualizado.`);
       }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "No se pudo guardar el producto.");
     } finally {
       setBusyId(null);
     }
   };
 
   const handleQuickStock = async (product: Product, delta: number) => {
-    const newStock = Math.max(0, (product.stock ?? 0) + delta);
     setBusyId(product.id);
     try {
       const res = await fetch(`/api/products/${product.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          stock: newStock,
-          available: newStock > 0 ? product.available : false,
+          stockChange: delta,
         }),
       });
+      if (!res.ok) throw new Error((await res.json()).error || "No se pudo guardar el producto.");
       if (res.ok) {
         await loadProducts();
       }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "No se pudo guardar el producto.");
     } finally {
       setBusyId(null);
     }
@@ -441,10 +448,13 @@ export default function StoreManager() {
     setBusyId(product.id);
     try {
       const res = await fetch(`/api/products/${product.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error || "No se pudo guardar el producto.");
       if (res.ok) {
         await loadProducts();
         showSuccess(`"${product.name}" fue eliminado del catálogo.`);
       }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "No se pudo guardar el producto.");
     } finally {
       setBusyId(null);
     }
@@ -452,6 +462,7 @@ export default function StoreManager() {
 
   return (
     <div className="space-y-6">
+      {productError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-700">{productError}</p>}
       {orderError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-700">{orderError}</p>}
       {/* 0. CENTRO DE GESTIÓN DE PEDIDOS, PAGOS Y ENVÍOS (CARGO EXPRESO / RECOGER) */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-5">

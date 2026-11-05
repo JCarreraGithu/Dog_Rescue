@@ -1,11 +1,10 @@
+import { checkContentAccess } from "@/lib/content-auth";
+import { intakeFailure } from "@/lib/intake-response";
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
-import { SESSION_COOKIE } from "@/lib/auth";
-import { getUserFromToken } from "@/lib/staff-store";
 import { getApplication } from "@/lib/intake-store";
 
 export const runtime = "nodejs";
@@ -19,11 +18,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(SESSION_COOKIE)?.value;
-    if (!(await getUserFromToken(token))) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+    const denied = await checkContentAccess(_request, "/api/applications"); if (denied) return denied;
 
     const { id } = await context.params;
     const application = await getApplication(id);
@@ -80,13 +75,6 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error(
-      "Error generando Word de adopción:",
-      error instanceof Error ? error.name : "desconocido"
-    );
-    return NextResponse.json(
-      { error: "No se pudo generar el Word" },
-      { status: 500 }
-    );
+    return intakeFailure(error);
   }
 }

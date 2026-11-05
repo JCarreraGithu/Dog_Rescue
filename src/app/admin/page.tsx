@@ -1,4 +1,5 @@
 "use client";
+import { uploadSpecialCaseForm } from "@/lib/special-case-upload-client";
 
 import { useEffect, useState } from "react";
 import type { LocalDog } from "@/lib/local-records";
@@ -358,12 +359,13 @@ const [dogEditForm, setDogEditForm] = useState({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(transparencyStats),
       });
+      if (!res.ok) throw new Error((await res.json()).error || "No se pudieron guardar las cifras.");
       if (res.ok) {
         setTransparencySaved(true);
         setTimeout(() => setTransparencySaved(false), 4000);
       }
     } catch (err) {
-      console.error(err);
+      alert(err instanceof Error ? err.message : "No se pudieron guardar las cifras.");
     } finally {
       setSavingTransparency(false);
     }
@@ -384,10 +386,7 @@ const [dogEditForm, setDogEditForm] = useState({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/dogs/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await uploadSpecialCaseForm(formData, "/api/dogs/upload", false);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo subir la imagen.");
       if (target === "create") {
@@ -686,9 +685,10 @@ const [dogEditForm, setDogEditForm] = useState({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, quantityChange: change }),
       });
+      if (!res.ok) throw new Error((await res.json()).error || "No se pudo guardar el inventario.");
       if (res.ok) loadAllData();
     } catch (err) {
-      console.error(err);
+      alert(err instanceof Error ? err.message : "No se pudo guardar el inventario.");
     }
   };
 
@@ -722,6 +722,7 @@ const [dogEditForm, setDogEditForm] = useState({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(invForm),
       });
+      if (!res.ok) throw new Error((await res.json()).error || "No se pudo guardar el inventario.");
       if (res.ok) {
         setShowAddInventoryModal(false);
         setInvForm({
@@ -734,7 +735,7 @@ const [dogEditForm, setDogEditForm] = useState({
         loadAllData();
       }
     } catch (err) {
-      console.error(err);
+      alert(err instanceof Error ? err.message : "No se pudo guardar el inventario.");
     }
   };
 

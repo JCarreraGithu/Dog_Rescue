@@ -1,52 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import {
-  getAboutSettings,
-  saveAboutSettings,
-  DEFAULT_ABOUT_SETTINGS,
-} from "@/lib/about-settings";
-
+import { NextResponse } from "next/server";
+import { checkContentAccess } from "@/lib/content-auth";
+import { body } from "@/lib/intake-validation";
+import { intakeFailure, intakeHeaders as headers } from "@/lib/intake-response";
+import { getAboutSettings, saveAboutSettings } from "@/lib/about-settings";
+export const dynamic = "force-dynamic";
 export async function GET() {
-  try {
-    const settings = await getAboutSettings();
-    return NextResponse.json(settings);
-  } catch (error) {
-    console.error("Error al leer configuración de Conócenos:", error);
-    return NextResponse.json(DEFAULT_ABOUT_SETTINGS);
-  }
+  try { return NextResponse.json(await getAboutSettings(), { headers }); } catch (error) { return intakeFailure(error); }
 }
-
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const current = await getAboutSettings();
-
-    const updated = await saveAboutSettings({
-      heroImage:
-        typeof body.heroImage === "string" && body.heroImage.trim()
-          ? body.heroImage.trim()
-          : current.heroImage,
-      heroBadgeText:
-        typeof body.heroBadgeText === "string" && body.heroBadgeText.trim()
-          ? body.heroBadgeText.trim()
-          : current.heroBadgeText,
-      heroCaptionTitle:
-        typeof body.heroCaptionTitle === "string" &&
-        body.heroCaptionTitle.trim()
-          ? body.heroCaptionTitle.trim()
-          : current.heroCaptionTitle,
-      heroCaptionSubtitle:
-        typeof body.heroCaptionSubtitle === "string" &&
-        body.heroCaptionSubtitle.trim()
-          ? body.heroCaptionSubtitle.trim()
-          : current.heroCaptionSubtitle,
-    });
-
-    return NextResponse.json(updated);
-  } catch (error) {
-    console.error("Error al guardar configuración de Conócenos:", error);
-    return NextResponse.json(
-      { error: "No se pudo guardar la foto de Conócenos" },
-      { status: 500 }
-    );
-  }
+export async function PUT(request: Request) {
+  try { const denied = await checkContentAccess(request, "/api/about-settings"); if (denied) return denied; return NextResponse.json(await saveAboutSettings(await body(request)), { headers }); }
+  catch (error) { return intakeFailure(error); }
 }

@@ -50,6 +50,7 @@ try {
   await run(["--test", "tests/admin-access.test.cjs"]);
   await run(["--test", "tests/content-persistence.test.cjs"]);
   await run(["--test", "tests/intake-persistence.test.cjs"]);
+  await run(["--test", "tests/admin-persistence.test.cjs"]);
   await run(["--test", "tests/admin-http.test.cjs"]);
 } catch {
   console.error("No se completó la verificación PostgreSQL aislada; revisar el log local privado.");

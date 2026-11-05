@@ -30,6 +30,8 @@ model Dog {
   // Eliminación lógica: conserva el expediente en Neon
   isDeleted        Boolean               @default(false)
   deletedAt        DateTime?
+  documentation    Json?
+  isArchived       Boolean @default(false)
 
   medicalRecords   MedicalRecord[]
   applications     AdoptionApplication[]
@@ -251,7 +253,37 @@ model ReportImage {
   totalSize       Int
   received        Int
   uploadTokenHash String?
+  isPrivate       Boolean @default(false)
   createdAt       DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model StoreProduct {
+  id           String @id @default(uuid())
+  name         String
+  description  String
+  price        Float
+  category     String
+  variantLabel String?
+  variants     String[] @default([])
+  image        String?
+  stock        Int @default(0)
+  available    Boolean @default(true)
+  featured     Boolean @default(false)
+  badge        String?
+  isDeleted    Boolean @default(false)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([isDeleted, createdAt])
+}
+
+model AboutSettings {
+  id                  String @id
+  heroImage           String
+  heroBadgeText       String
+  heroCaptionTitle    String
+  heroCaptionSubtitle String
+  updatedAt           DateTime @default(now()) @updatedAt @db.Timestamptz(3)
 }
 
 model SpecialCase {

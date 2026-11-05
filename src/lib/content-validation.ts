@@ -1,5 +1,5 @@
 import type { HomeHeroSettings } from "@/lib/home-settings-client";
-import { normalizeRefugeName } from "@/lib/refuge-name";
+import { normalizeRefugeName } from "./refuge-name";
 
 export class ContentValidationError extends Error {}
 export class NotificationNotFoundError extends Error {}

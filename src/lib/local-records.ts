@@ -1,9 +1,6 @@
-import fs from "fs/promises";
-import path from "path";
-import { DEFAULT_DOGS, DemoDog } from "@/data/default-dogs";
+import type { DemoDog } from "@/data/default-dogs";
 import { getApplications, getVolunteers, getReports, getOrders } from "@/lib/intake-store";
 
-const DATA_DIR = path.join(process.cwd(), "src", "data");
 
 export type DogRehabAttachment = {
   id: string;
@@ -121,38 +118,8 @@ export function buildDefaultDogDocumentation(dog: Partial<LocalDog>): DogDocumen
   };
 }
 
-export async function getLocalDogs(): Promise<LocalDog[]> {
-  try {
-    const raw = await fs.readFile(path.join(DATA_DIR, "dogs.json"), "utf-8");
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed.map((d: LocalDog) => ({
-        ...d,
-        documentation: d.documentation || buildDefaultDogDocumentation(d),
-      }));
-    }
-  } catch {
-    // Si aún no existe dogs.json, inicializar con DEFAULT_DOGS
-  }
-  const initial: LocalDog[] = DEFAULT_DOGS.map((d) => ({
-    ...d,
-    isDeleted: false,
-    deletedAt: null,
-    createdAt: new Date().toISOString(),
-    documentation: buildDefaultDogDocumentation(d),
-  }));
-  await saveLocalDogs(initial);
-  return initial;
-}
-
-export async function saveLocalDogs(list: LocalDog[]): Promise<void> {
-  await writeJsonArray("dogs.json", list);
-}
-
-async function writeJsonArray<T>(fileName: string, data: T[]): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(path.join(DATA_DIR, fileName), JSON.stringify(data, null, 2), "utf-8");
-}
+// Alias conservado para lectores; PostgreSQL es la única fuente.
+export { getDogs as getLocalDogs } from "@/lib/dog-store";
 
 // 1. SOLICITUDES DE ADOPCIÓN
 export type LocalAdoptionApplication = {

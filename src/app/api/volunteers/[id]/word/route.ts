@@ -1,7 +1,6 @@
+import { checkContentAccess } from "@/lib/content-auth";
+import { intakeFailure } from "@/lib/intake-response";
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE } from "@/lib/auth";
-import { getUserFromToken } from "@/lib/staff-store";
-import { cookies } from "next/headers";
 import fs from "node:fs/promises";
 import path from "node:path";
 import PizZip from "pizzip";
@@ -16,11 +15,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(SESSION_COOKIE)?.value;
-    if (!token || !(await getUserFromToken(token))) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+    const denied = await checkContentAccess(_request, "/api/volunteers"); if (denied) return denied;
     const { id } = await context.params;
     const vol = await getVolunteer(id);
 
@@ -71,10 +66,6 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Error al generar Word de voluntariado:", error);
-    return NextResponse.json(
-      { error: "No se pudo generar el Word." },
-      { status: 500 }
-    );
+    return intakeFailure(error);
   }
 }

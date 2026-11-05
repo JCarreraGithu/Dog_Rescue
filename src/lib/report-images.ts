@@ -10,9 +10,10 @@ export function imageContentType(bytes: Uint8Array) {
   if (data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return "image/png";
   if (/^GIF8[79]a/.test(data.subarray(0, 6).toString('ascii'))) return "image/gif";
   if (data.subarray(0, 4).toString('ascii') === 'RIFF' && data.subarray(8, 12).toString('ascii') === 'WEBP') return "image/webp";
+  if (data.subarray(4, 8).toString('ascii') === 'ftyp' && /^(avif|avis)$/.test(data.subarray(8, 12).toString('ascii'))) return "image/avif";
   throw new IntakeError("La imagen debe ser JPG, PNG, WEBP o GIF.");
 }
-export async function uploadReportImage(form: FormData) {
+export async function uploadReportImage(form: FormData, isPrivate = false) {
   const file = form.get("file");
   if (!(file instanceof File) || !file.size) throw new IntakeError("No se recibió una imagen válida.");
   if (file.size > REPORT_IMAGE_CHUNK_BYTES) throw new IntakeError("El fragmento de imagen supera 2 MB.", 413);
@@ -25,7 +26,7 @@ export async function uploadReportImage(form: FormData) {
     if (offset !== 0) throw new IntakeError("Falta el inicio de la imagen.");
     const uploadToken = crypto.randomBytes(32).toString('hex');
     const complete = content.length === totalSize;
-    const row = await prisma.reportImage.create({ data: { content, contentType: imageContentType(content), totalSize, received: content.length, uploadTokenHash: complete ? null : crypto.createHash('sha256').update(uploadToken).digest('hex') } });
+    const row = await prisma.reportImage.create({ data: { content, contentType: imageContentType(content), totalSize, received: content.length, isPrivate, uploadTokenHash: complete ? null : crypto.createHash('sha256').update(uploadToken).digest('hex') } });
     return complete ? { url: `/api/case-reports/images/${row.id}` } : { uploadId: row.id, uploadToken, received: row.received };
   }
   const token = form.get("uploadToken");
