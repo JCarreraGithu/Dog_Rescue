@@ -53,7 +53,7 @@ export const DEFAULT_IMPACT_CASES: ImpactCase[] = [
     title: "Sanando las heridas del abandono extremo con amor y paciencia",
     subtitle: "Sarna sarcóptica avanzada, anemia y temor profundo a los humanos",
     story:
-      "Esperanza deambulaba sola buscando comida entre la basura; había perdido casi todo su pelaje por una infección severa en la piel y temblaba cada vez que alguien se acercaba. En DOG Rescue iniciamos un protocolo de baños medicados semanales, alimentación hiperproteica y rehabilitación emocional. Poco a poco su piel sanó, su pelaje dorado volvió a brillar y aprendió a confiar nuevamente en las caricias.",
+      "Esperanza deambulaba sola buscando comida entre la basura; había perdido casi todo su pelaje por una infección severa en la piel y temblaba cada vez que alguien se acercaba. En DOG rescue iniciamos un protocolo de baños medicados semanales, alimentación hiperproteica y rehabilitación emocional. Poco a poco su piel sanó, su pelaje dorado volvió a brillar y aprendió a confiar nuevamente en las caricias.",
     beforeText:
       "Pérdida del 80% de su pelaje por infección cutánea, anemia severa y desconfianza extrema.",
     afterText:

@@ -439,7 +439,7 @@ export default function HomePage() {
             <div className="inline-flex items-center gap-2 bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold px-3 py-1 rounded-full">
               <Users className="w-4 h-4" /> <span>Voluntariado • Amatitlán</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Forma parte de DOG Rescue Guatemala</h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Forma parte de DOG rescue Guatemala</h2>
             <p className="text-slate-300 text-sm leading-relaxed">
               Puedes apoyar en el cuidado de los perritos, rescates, logística, actividades solidarias o difusión en redes sociales.
               Envíanos tu postulación y el equipo del refugio evaluará tu solicitud.
@@ -694,7 +694,7 @@ export default function HomePage() {
                 className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm cursor-pointer"
               >
                 <Send className="w-4 h-4" />
-                <span>Enviar Reporte a Rescate DOG Rescue</span>
+                <span>Enviar Reporte a Rescate DOG rescue</span>
               </button>
             </form>
           )}

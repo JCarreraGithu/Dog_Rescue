@@ -574,7 +574,7 @@ function CatalogoContent() {
                   <CheckCircle2 className="w-14 h-14 text-emerald-600 mx-auto" />
                   <h4 className="font-black text-xl text-emerald-950">¡Solicitud recibida con éxito!</h4>
                   <p className="text-xs sm:text-sm text-emerald-800 leading-relaxed max-w-md mx-auto">
-                    Hemos registrado tu interés en adoptar a <strong>{selectedDog.name}</strong>. El equipo del refugio DOG Rescue evaluará tu información y se comunicará a tu teléfono.
+                    Hemos registrado tu interés en adoptar a <strong>{selectedDog.name}</strong>. El equipo del refugio DOG rescue evaluará tu información y se comunicará a tu teléfono.
                   </p>
                   <button
                     type="button"
@@ -747,7 +747,7 @@ function CatalogoContent() {
                               Declaro haber leído y aceptado todas las normas de las{" "}
                               <strong>5 Libertades del Bienestar Animal</strong>, la{" "}
                               <strong>Ley Decreto 5-2017</strong> y el{" "}
-                              <strong>Acta de Compromiso de DOG Rescue Guatemala</strong>.
+                              <strong>Acta de Compromiso de DOG rescue Guatemala</strong>.
                             </p>
                           </div>
                         </div>
@@ -811,7 +811,7 @@ function CatalogoContent() {
                 </div>
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 block">
-                    DOG Rescue Guatemala • Documento Oficial
+                    DOG rescue Guatemala • Documento Oficial
                   </span>
                   <h3 className="text-base sm:text-lg font-black leading-snug">
                     Acta de Términos, Normas y Compromiso de Adopción
@@ -837,7 +837,7 @@ function CatalogoContent() {
                     {selectedDog.name}
                   </strong>{" "}
                   declara conocer y aceptar íntegramente las normas internacionales de bienestar animal, la legislación vigente en la República de Guatemala y las cláusulas de protección del refugio{" "}
-                  <strong className="text-slate-950">DOG Rescue Guatemala</strong>:
+                  <strong className="text-slate-950">DOG rescue Guatemala</strong>:
                 </p>
               </div>
 
@@ -907,7 +907,7 @@ function CatalogoContent() {
                   <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-black">
                     III
                   </span>
-                  <span>Compromisos con DOG Rescue Guatemala</span>
+                  <span>Compromisos con DOG rescue Guatemala</span>
                 </h4>
 
                 <div className="p-4 rounded-2xl bg-white border border-emerald-200 space-y-2 text-xs text-slate-700">
@@ -919,7 +919,7 @@ function CatalogoContent() {
                       <strong>Seguimiento Post-Adopción:</strong> Permitir la comunicación de seguimiento con el refugio (envío periódico de fotografías/videos o visita acordada) para verificar el bienestar de {selectedDog.name}.
                     </li>
                     <li>
-                      <strong>Prohibición de Abandono o Cesión a Terceros:</strong> El adoptado no podrá ser regalado, vendido ni abandonado bajo ninguna circunstancia. En caso de fuerza mayor comprobada, el adoptante se compromete a notificar inmediatamente a DOG Rescue Guatemala.
+                      <strong>Prohibición de Abandono o Cesión a Terceros:</strong> El adoptado no podrá ser regalado, vendido ni abandonado bajo ninguna circunstancia. En caso de fuerza mayor comprobada, el adoptante se compromete a notificar inmediatamente a DOG rescue Guatemala.
                     </li>
                   </ul>
                 </div>

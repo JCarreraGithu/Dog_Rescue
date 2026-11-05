@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Panel | DOG Rescue Guatemala",
+  title: "Panel | DOG rescue Guatemala",
   robots: { index: false, follow: false },
 };
 

@@ -82,7 +82,7 @@ export default function SpecialCasesManager() {
     heroImage:
       "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=1000",
     heroBadgeText: "Amor animalista desde 2020",
-    heroCaptionTitle: "DOG Rescue Guatemala",
+    heroCaptionTitle: "DOG rescue Guatemala",
     heroCaptionSubtitle: "Salvando vidas con amor y dignidad",
   });
   const [uploadingHeroPhoto, setUploadingHeroPhoto] = useState(false);
@@ -101,7 +101,7 @@ export default function SpecialCasesManager() {
         setAboutSettings({
           heroImage: data.heroImage,
           heroBadgeText: data.heroBadgeText || "Amor animalista desde 2020",
-          heroCaptionTitle: data.heroCaptionTitle || "DOG Rescue Guatemala",
+          heroCaptionTitle: data.heroCaptionTitle || "DOG rescue Guatemala",
           heroCaptionSubtitle:
             data.heroCaptionSubtitle || "Salvando vidas con amor y dignidad",
         });

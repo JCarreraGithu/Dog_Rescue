@@ -199,7 +199,7 @@ export default function CartDrawer() {
             </h3>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-sm">
               Hemos recibido los datos de tu compra y de entrega por{" "}
-              <strong>{createdOrder.deliveryMethod}</strong>. El equipo de DOG Rescue Guatemala ya tiene la notificación en el panel administrativo para gestionar tu envío.
+              <strong>{createdOrder.deliveryMethod}</strong>. El equipo de DOG rescue Guatemala ya tiene la notificación en el panel administrativo para gestionar tu envío.
             </p>
             <div className="w-full max-w-sm p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1.5">
               <p>

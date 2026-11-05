@@ -14,7 +14,7 @@ export default function Footer() {
     <div className="bg-white rounded-xl p-2 inline-flex">
       <Image
         src="/logo-refugio.jpg"
-        alt="Logo oficial DOG Rescue Guatemala"
+        alt="Logo oficial DOG rescue Guatemala"
         width={140}
         height={140}
         className="w-28 h-auto object-contain"
@@ -23,7 +23,7 @@ export default function Footer() {
   </Link>
 </div>
            <p className="text-sm text-slate-400 leading-relaxed mb-4">
-  DOG Rescue Guatemala es un refugio independiente y sin fines
+  DOG rescue Guatemala es un refugio independiente y sin fines
   de lucro, dedicado al rescate, protección, rehabilitación y
   bienestar de los animales. Trabajamos con amor y compromiso
   para brindarles una segunda oportunidad y promover la
@@ -74,7 +74,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <p>© {new Date().getFullYear()} Refugio DOG Rescue Guatemala (Amatitlán). Organización Comunitaria Sin Fines de Lucro.</p>
+          <p>© {new Date().getFullYear()} Refugio DOG rescue Guatemala (Amatitlán). Organización Comunitaria Sin Fines de Lucro.</p>
           <p className="flex items-center gap-1">
             Hecho con <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> para los huellitas de Guatemala.
           </p>

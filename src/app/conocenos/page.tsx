@@ -29,9 +29,9 @@ import SpecialCasesSection from "@/components/SpecialCasesSection";
 import AboutHeroVisual from "@/components/AboutHeroVisual";
 
 export const metadata: Metadata = {
-  title: "Conócenos | DOG Rescue Guatemala - Un propósito que nació del corazón",
+  title: "Conócenos | DOG rescue Guatemala - Un propósito que nació del corazón",
   description:
-    "Conoce la historia, misión y la familia fundadora de DOG Rescue Guatemala. Desde Amatitlán para toda Guatemala, rescatando perritos y transformando vidas.",
+    "Conoce la historia, misión y la familia fundadora de DOG rescue Guatemala. Desde Amatitlán para toda Guatemala, rescatando perritos y transformando vidas.",
 };
 
 const METRICS = [
@@ -94,7 +94,7 @@ const TIMELINE = [
   },
   {
     period: "2020 • En Pandemia",
-    title: "Nace DOG Rescue Guatemala en Amatitlán",
+    title: "Nace DOG rescue Guatemala en Amatitlán",
     description:
       "En medio de la incertidumbre mundial de la pandemia, surge la plataforma en Facebook para alzar la voz contra el abandono de perros en las calles de nuestro querido Amatitlán. La respuesta de los vecinos y voluntarios encendió la chispa de la organización.",
     tag: "Amatitlán",
@@ -154,7 +154,7 @@ export default function ConocenosPage() {
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
               <div className="inline-flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/15 text-sky-200 text-xs sm:text-sm font-semibold px-4 py-2 rounded-full shadow-sm">
                 <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>Nuestra Historia • DOG Rescue Guatemala</span>
+                <span>Nuestra Historia • DOG rescue Guatemala</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15]">
@@ -242,7 +242,7 @@ export default function ConocenosPage() {
 
               <div className="mt-6 pt-6 border-t border-white/10">
                 <p className="font-bold text-white text-base">Fundadora del Refugio</p>
-                <p className="text-xs text-sky-300 mt-0.5">DOG Rescue Guatemala • Amatitlán</p>
+                <p className="text-xs text-sky-300 mt-0.5">DOG rescue Guatemala • Amatitlán</p>
                 <div className="flex items-center gap-1.5 mt-3 text-xs text-slate-400">
                   <MapPin className="w-3.5 h-3.5 text-amber-400" />
                   <span>Amatitlán, Guatemala</span>
@@ -298,7 +298,7 @@ export default function ConocenosPage() {
                     Amatitlán • 2020
                   </span>
                   <p className="text-sm text-slate-800 leading-relaxed font-medium">
-                    En 2020, en medio de la pandemia, nació <strong>DOG Rescue Guatemala</strong>, inicialmente como una plataforma en Facebook para crear conciencia sobre el abandono de perros en las calles, especialmente en nuestro querido Amatitlán.
+                    En 2020, en medio de la pandemia, nació <strong>DOG rescue Guatemala</strong>, inicialmente como una plataforma en Facebook para crear conciencia sobre el abandono de perros en las calles, especialmente en nuestro querido Amatitlán.
                   </p>
                 </div>
 
@@ -321,7 +321,7 @@ export default function ConocenosPage() {
                     Hoy te invitamos a conocer nuestra historia, una historia de amor, servicio y esperanza, con la convicción de que llegaremos mucho más lejos, salvando vidas y honrando el cuidado de la creación de Dios.
                   </p>
                   <p className="text-xs font-bold text-amber-300 mt-2 uppercase tracking-wider">
-                    Familia Fundadora • DOG Rescue Guatemala
+                    Familia Fundadora • DOG rescue Guatemala
                   </p>
                 </div>
               </div>
@@ -368,7 +368,7 @@ export default function ConocenosPage() {
 
                 <div className="mt-8 pt-6 border-t border-slate-100 flex items-center gap-2 text-xs font-bold text-slate-400">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>Principio activo de DOG Rescue</span>
+                  <span>Principio activo de DOG rescue</span>
                 </div>
               </div>
             );

@@ -10,7 +10,7 @@ export default function RefugeMap() {
       </div>
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
         <iframe
-          title="Mapa de ubicación del refugio DOG Rescue Guatemala"
+          title="Mapa de ubicación del refugio DOG rescue Guatemala"
           src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
           width="100%"
           height="390"
@@ -21,7 +21,7 @@ export default function RefugeMap() {
         />
         <div className="flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
           <div>
-            <p className="font-bold text-slate-900">Refugio DOG Rescue Guatemala</p>
+            <p className="font-bold text-slate-900">Refugio DOG rescue Guatemala</p>
             <p className="text-sm text-slate-600">{refugeAddress}</p>
           </div>
           <a

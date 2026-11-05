@@ -1,4 +1,5 @@
 import type { HomeHeroSettings } from "@/lib/home-settings-client";
+import { normalizeRefugeName } from "@/lib/refuge-name";
 
 export class ContentValidationError extends Error {}
 export class NotificationNotFoundError extends Error {}
@@ -29,7 +30,7 @@ export function validateHomeSettings(input: unknown): Partial<HomeHeroSettings> 
     } else {
       throw new ContentValidationError("La configuración contiene un campo desconocido.");
     }
-    result[key] = value;
+    result[key] = Object.hasOwn(textLimits, key) ? normalizeRefugeName(value) : value;
   }
   return result as Partial<HomeHeroSettings>;
 }

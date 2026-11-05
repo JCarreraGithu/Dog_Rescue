@@ -21,7 +21,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: "playera-oficial-guardianes",
     name: 'Playera Oficial "Guardianes de Amatitlán"',
     description:
-      "Playera 100% algodón peinado de alta calidad con el logo oficial de DOG Rescue Guatemala en pecho y espalda. Ideal para jornadas y uso diario.",
+      "Playera 100% algodón peinado de alta calidad con el logo oficial de DOG rescue Guatemala en pecho y espalda. Ideal para jornadas y uso diario.",
     price: 110,
     category: "Playeras",
     variantLabel: "Talla",

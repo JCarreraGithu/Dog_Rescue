@@ -442,7 +442,7 @@ export default function DogDocumentationModal({
                   </label>
                   <input
                     type="text"
-                    placeholder="Ej. Brigada DOG Rescue / Vecino"
+                    placeholder="Ej. Brigada DOG rescue / Vecino"
                     value={doc.arrival.rescuedBy}
                     onChange={(e) =>
                       setDoc({
@@ -1205,7 +1205,7 @@ export default function DogDocumentationModal({
                   {doc.adoption.adopterPhone && (
                     <a
                       href={`https://wa.me/502${doc.adoption.adopterPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
-                        `Hola ${doc.adoption.adopterName}, te saludamos de DOG Rescue Guatemala para el seguimiento de bienestar de ${dog?.name}. ¿Cómo ha estado?`
+                        `Hola ${doc.adoption.adopterName}, te saludamos de DOG rescue Guatemala para el seguimiento de bienestar de ${dog?.name}. ¿Cómo ha estado?`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -1374,7 +1374,7 @@ export default function DogDocumentationModal({
                 <div className="border-b border-slate-200 pb-4 flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                      DOG Rescue Guatemala • Amatitlán (9a calle 7-27)
+                      DOG rescue Guatemala • Amatitlán (9a calle 7-27)
                     </p>
                     <h4 className="text-xl font-black text-slate-900 mt-0.5">
                       Expediente Documental Único: {dog?.name}

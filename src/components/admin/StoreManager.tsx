@@ -205,14 +205,14 @@ export default function StoreManager() {
 
     const msg =
       order.deliveryMethod === "Cargo Expreso"
-        ? `Hola ${order.customerName} 🐾, te saludamos de DOG Rescue Guatemala respecto a tu pedido #${order.id} (${itemsText} - Total Q${order.total}).\n\nEstado: *${order.status}*${
+        ? `Hola ${order.customerName} 🐾, te saludamos de DOG rescue Guatemala respecto a tu pedido #${order.id} (${itemsText} - Total Q${order.total}).\n\nEstado: *${order.status}*${
             order.trackingNumber
               ? `\n🚚 *No. de Guía Cargo Expreso:* ${order.trackingNumber}`
               : ""
           }\n📍 Dirección de envío: ${order.department || ""} - ${
             order.shippingAddress || ""
           }\n\n¡Muchas gracias por apoyar a nuestros perritos rescatados!`
-        : `Hola ${order.customerName} 🐾, te saludamos de DOG Rescue Guatemala respecto a tu pedido #${order.id} (${itemsText} - Total Q${order.total}).\n\nEstado: *${order.status}*\n📍 Entrega: Recoger en Sede / Jornada Amatitlán (9a calle 7-27).\n\n¡Muchas gracias por apoyar a nuestros perritos rescatados!`;
+        : `Hola ${order.customerName} 🐾, te saludamos de DOG rescue Guatemala respecto a tu pedido #${order.id} (${itemsText} - Total Q${order.total}).\n\nEstado: *${order.status}*\n📍 Entrega: Recoger en Sede / Jornada Amatitlán (9a calle 7-27).\n\n¡Muchas gracias por apoyar a nuestros perritos rescatados!`;
 
     return `https://wa.me/${gtPhone}?text=${encodeURIComponent(msg)}`;
   };

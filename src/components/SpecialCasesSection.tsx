@@ -289,7 +289,7 @@ export default function SpecialCasesSection() {
 
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400">
                     <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-                    <span>DOG Rescue</span>
+                    <span>DOG rescue</span>
                   </span>
                 </div>
               </div>

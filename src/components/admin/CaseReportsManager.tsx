@@ -139,7 +139,7 @@ export default function CaseReportsManager() {
     );
     const gtPhone =
       cleanPhone.length === 8 ? `502${cleanPhone}` : cleanPhone;
-    const msg = `Hola ${report.reporterName} 🐾, te escribimos del equipo de rescate de DOG Rescue Guatemala respecto al reporte que enviaste sobre el perrito en "${report.locationAddress}".\n\nEstado de tu reporte: *${
+    const msg = `Hola ${report.reporterName} 🐾, te escribimos del equipo de rescate de DOG rescue Guatemala respecto al reporte que enviaste sobre el perrito en "${report.locationAddress}".\n\nEstado de tu reporte: *${
       report.status || "Recibido"
     }*\n\n¿Nos podrías compartir la ubicación en tiempo real o referencias adicionales para apoyar? ¡Gracias por no ser indiferente!`;
     return `https://wa.me/${gtPhone}?text=${encodeURIComponent(msg)}`;

@@ -27,7 +27,7 @@ export const DEFAULT_HOME_HERO_SETTINGS: HomeHeroSettings = {
   mottoPart1: "Transformando vidas,",
   mottoHighlight: "un rescate a la vez.",
   description:
-    "DOG Rescue Guatemala es un refugio dirigido de manera independiente y sin fines de lucro, centrado en el cuidado, bienestar y protección de los animales. Trabajamos por el rescate, rehabilitación y adopción responsable de perritos en Amatitlán.",
+    "DOG rescue Guatemala es un refugio dirigido de manera independiente y sin fines de lucro, centrado en el cuidado, bienestar y protección de los animales. Trabajamos por el rescate, rehabilitación y adopción responsable de perritos en Amatitlán.",
   button1Text: "Ver Catálogo de Adopciones",
   button2Text: "Reportar Perrito en Riesgo",
 

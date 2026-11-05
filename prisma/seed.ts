@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Iniciando sembrado de datos para Refugio DOG Rescue Guatemala...");
+  console.log("Iniciando sembrado de datos para Refugio DOG rescue Guatemala...");
 
   // 1. Estadísticas de Transparencia
   await prisma.transparencyStat.upsert({

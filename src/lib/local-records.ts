@@ -83,7 +83,7 @@ export function buildDefaultDogDocumentation(dog: Partial<LocalDog>): DogDocumen
     arrival: {
       intakeDate,
       rescueLocation: "Amatitlán, Guatemala",
-      rescuedBy: "Brigada DOG Rescue",
+      rescuedBy: "Brigada DOG rescue",
       linkedCaseReportId: "",
       initialCondition: "Abandono",
       initialWeightKg: dog.size === "Pequeño" ? "6.5" : dog.size === "Grande" ? "22.0" : "13.5",

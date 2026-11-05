@@ -1,4 +1,4 @@
-# 🐶 Refugio DOG Rescue Guatemala (Amatitlán)
+# 🐶 Refugio DOG rescue Guatemala (Amatitlán)
 
 Sistema web integral para la gestión de rescates, expedientes caninos, catálogo digital de adopciones, agenda médica, control de inventario y voluntariado en Amatitlán, Guatemala sin fines de lucro.
 

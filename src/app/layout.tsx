@@ -5,7 +5,7 @@ import PublicShell from "@/components/PublicShell";
 import { getLoginPath } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Refugio DOG Rescue Guatemala | Amatitlán",
+  title: "Refugio DOG rescue Guatemala | Amatitlán",
   description: "Organización sin fines de lucro en Amatitlán dedicada al rescate, rehabilitación y adopción responsable de perros.",
 };
 

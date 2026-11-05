@@ -49,7 +49,7 @@ export default function ApoyanosPage() {
         <div className="max-w-3xl mx-auto">
           <Heart className="mx-auto w-12 h-12 text-emerald-300 mb-4" />
           <h1 className="text-4xl sm:text-5xl font-black mb-5">Tu ayuda cambia vidas</h1>
-          <p className="text-lg text-emerald-100 leading-relaxed">DOG Rescue Guatemala es un refugio independiente y sin fines de lucro, enfocado en el cuidado, bienestar y protección de los animales. Cada aporte, grande o pequeño, nos ayuda a seguir adelante.</p>
+          <p className="text-lg text-emerald-100 leading-relaxed">DOG rescue Guatemala es un refugio independiente y sin fines de lucro, enfocado en el cuidado, bienestar y protección de los animales. Cada aporte, grande o pequeño, nos ayuda a seguir adelante.</p>
         </div>
       </section>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-10 mt-10">
@@ -68,7 +68,7 @@ export default function ApoyanosPage() {
           <div className="flex items-center gap-3 mb-4"><Wallet className="w-8 h-8 text-emerald-600" /><h2 className="text-2xl font-extrabold">Donaciones económicas</h2></div>
           <p className="text-slate-600 mb-5">También puedes apoyar la alimentación, atención veterinaria y mantenimiento del refugio mediante PayPal.</p>
           <div className="rounded-2xl bg-slate-50 border border-slate-200 p-5 sm:p-6">
-            <h3 className="font-bold text-slate-900 text-lg">Donar a DOG Rescue Guatemala</h3>
+            <h3 className="font-bold text-slate-900 text-lg">Donar a DOG rescue Guatemala</h3>
             <p className="text-sm text-slate-600 mt-2 mb-5">Realiza tu aporte a través de nuestro enlace de PayPal.</p>
             <a href="https://www.paypal.com/paypalme/goodshopDogRescue" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white px-6 py-3 font-bold transition">
               <Heart className="w-4 h-4" /> Donar con PayPal <ArrowRight className="w-4 h-4" />

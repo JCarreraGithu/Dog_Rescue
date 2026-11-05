@@ -46,6 +46,7 @@ process.env.AUTH_SECRET = crypto.randomBytes(32).toString('hex');
 const auth = load('src/lib/auth.ts');
 const notifications = load('src/lib/notifications.ts');
 const settings = load('src/lib/home-settings.ts');
+const { normalizeRefugeName } = load('src/lib/refuge-name.ts');
 const notificationsApi = load('src/app/api/notifications/route.ts');
 const homeApi = load('src/app/api/home-settings/route.ts');
 const makeNotification = (type = 'system') => ({ type, title: 'Synthetic activity', message: 'Synthetic message', targetTab: 'notifications', metadata: { source: type, count: 1, nested: { ok: true } } });
@@ -184,5 +185,22 @@ test('notifications and home settings persist with correct failures and permissi
     await assert.rejects(importer.importSiteContent(db, { ...saved, mottoPart1: 'Conflict' }, legacy, true));
     await assert.rejects(importer.importSiteContent(db, saved, [{ ...legacy[0], read: false }], true));
     assert.equal((await settings.getHomeHeroSettings()).mottoPart1, saved.mottoPart1);
+  });
+  await t.test('official name normalizes legacy settings and persists on save without changing styles or URLs', async () => {
+    const official = load('src/config/site.ts').SITE.name;
+    const variants = ['DOG', 'Dog', 'dog'].flatMap(dog => ['Rescue', 'RESCUE', 'rescue'].map(rescue => `${dog} ${rescue} guatemala`));
+    const link = 'https://example.invalid/DOG%20Rescue%20Guatemala';
+    for (const name of variants) {
+      assert.equal(normalizeRefugeName(`Hola ${name}! ${link}`), `Hola ${official}! ${link}`);
+    }
+    const original = await db.homeSettings.findUnique({ where: { id: 'home' } });
+    await db.homeSettings.update({ where: { id: 'home' }, data: { description: variants[0], badgeText: variants[1] } });
+    const visible = await (await homeApi.GET()).json();
+    assert.equal(visible.description, official);
+    assert.equal(visible.badgeText, official);
+    assert.equal(visible.fontFamily, original.fontFamily);
+    const response = await homeApi.PUT(request('/api/home-settings', 'PUT', { description: variants[2] }, cookie));
+    assert.equal(response.status, 200);
+    assert.equal((await db.homeSettings.findUnique({ where: { id: 'home' } })).description, official);
   });
 });

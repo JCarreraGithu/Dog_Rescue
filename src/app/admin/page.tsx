@@ -851,7 +851,7 @@ const [dogEditForm, setDogEditForm] = useState({
               <h1 className="text-2xl font-black tracking-tight">Panel Administrativo</h1>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Refugio DOG Rescue Guatemala • Amatitlán (9a calle 7-27)
+              Refugio DOG rescue Guatemala • Amatitlán (9a calle 7-27)
             </p>
           </div>
 
@@ -2099,7 +2099,7 @@ const [dogEditForm, setDogEditForm] = useState({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 font-medium">Refugio DOG Rescue Guatemala • Amatitlán</p>
+                  <p className="text-xs text-slate-500 font-medium">Refugio DOG rescue Guatemala • Amatitlán</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {selectedDog.isDeleted ? (
