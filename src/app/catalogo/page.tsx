@@ -65,6 +65,7 @@ const TEMPERAMENT_OPTIONS = ["Todos", "Sociable", "Juguetón", "Tranquilo", "Car
 function CatalogoContent() {
   const searchParams = useSearchParams();
   const initialDogId = searchParams.get("dogId");
+  const initialSponsorDogId = searchParams.get("sponsorDogId");
 
   const [dogs, setDogs] = useState<DemoDog[]>([]);
   const [loading, setLoading] = useState(false);
@@ -97,6 +98,11 @@ function CatalogoContent() {
   const [appSubmitted, setAppSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [sponsorshipDog, setSponsorshipDog] = useState<DemoDog | null>(null);
+  const [sponsorshipForm, setSponsorshipForm] = useState({ sponsorName: "", sponsorPhone: "", sponsorEmail: "", message: "" });
+  const [sponsorshipSubmitted, setSponsorshipSubmitted] = useState(false);
+  const [sponsorshipSubmitting, setSponsorshipSubmitting] = useState(false);
+  const [sponsorshipError, setSponsorshipError] = useState("");
 
   // PostgreSQL es la única fuente del catálogo.
   const fetchDogs = async () => {
@@ -140,6 +146,13 @@ function CatalogoContent() {
       if (found) setSelectedDog(found);
     }
   }, [initialDogId, dogs]);
+
+  useEffect(() => {
+    if (initialSponsorDogId && !sponsorshipDog) {
+      const found = dogs.find((d) => d.id === initialSponsorDogId);
+      if (found) setSponsorshipDog(found);
+    }
+  }, [initialSponsorDogId, dogs, sponsorshipDog]);
 
   // Filtro adicional por término de búsqueda (nombre / raza)
   const filteredDogs = useMemo(() => {
@@ -204,6 +217,28 @@ function CatalogoContent() {
       setSubmitError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSponsorshipSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!sponsorshipDog || sponsorshipSubmitting) return;
+    setSponsorshipSubmitting(true);
+    setSponsorshipError("");
+    try {
+      const response = await fetch("/api/sponsorships", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dogId: sponsorshipDog.id, ...sponsorshipForm }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "No se pudo enviar la solicitud. Intenta de nuevo.");
+      setSponsorshipSubmitted(true);
+      setSponsorshipForm({ sponsorName: "", sponsorPhone: "", sponsorEmail: "", message: "" });
+    } catch (error) {
+      setSponsorshipError(error instanceof Error ? error.message : "Ocurrió un error inesperado.");
+    } finally {
+      setSponsorshipSubmitting(false);
     }
   };
 
@@ -463,7 +498,7 @@ function CatalogoContent() {
                   </div>
 
                   {/* Acciones */}
-                  <div className="pt-2">
+                  <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -476,7 +511,20 @@ function CatalogoContent() {
                       className="w-full bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold py-3.5 rounded-2xl shadow-md shadow-sky-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer hover:-translate-y-0.5"
                     >
                       <Heart className="w-4 h-4 fill-white" />
-                      <span>Conocer a {dog.name} y Postular</span>
+                      <span>Conocer y adoptar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSponsorshipDog(dog);
+                        setSponsorshipForm({ sponsorName: "", sponsorPhone: "", sponsorEmail: "", message: "" });
+                        setSponsorshipSubmitted(false);
+                        setSponsorshipError("");
+                      }}
+                      className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-sm font-bold py-3.5 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer hover:-translate-y-0.5"
+                    >
+                      <Heart className="w-4 h-4" />
+                      <span>Apadrinar</span>
                     </button>
                   </div>
                 </div>
@@ -782,6 +830,56 @@ function CatalogoContent() {
       )}
 
       {/* 5. MODAL DOCUMENTO OFICIAL DE TÉRMINOS, NORMAS Y COMPROMISO DE ADOPCIÓN */}
+      {sponsorshipDog && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSponsorshipDog(null)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="sponsorship-title" onClick={(event) => event.stopPropagation()} className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative space-y-5 my-6 border border-slate-200">
+            <button type="button" onClick={() => setSponsorshipDog(null)} aria-label="Cerrar formulario de apadrinamiento" className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition">
+              <X className="w-5 h-5" />
+            </button>
+            {sponsorshipSubmitted ? (
+              <div className="text-center py-4 space-y-3">
+                <CheckCircle2 className="w-14 h-14 text-emerald-600 mx-auto" />
+                <h2 id="sponsorship-title" className="font-black text-2xl text-slate-900">¡Solicitud recibida!</h2>
+                <p className="text-sm text-slate-600">Gracias por querer apadrinar a <strong>{sponsorshipDog.name}</strong>. El equipo del refugio se comunicará contigo para contarte cómo ayudarle.</p>
+                <button type="button" onClick={() => setSponsorshipDog(null)} className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl">Volver al catálogo</button>
+              </div>
+            ) : (
+              <>
+                <div className="pr-8">
+                  <div className="inline-flex items-center gap-2 text-rose-700 bg-rose-50 border border-rose-100 rounded-full px-3 py-1 text-xs font-bold mb-3"><Heart className="w-3.5 h-3.5" /> Apadrinamiento</div>
+                  <h2 id="sponsorship-title" className="text-2xl font-black text-slate-900">Apadrina a {sponsorshipDog.name}</h2>
+                  <p className="text-sm text-slate-600 mt-1">Déjanos tus datos y el equipo te contactará para contarte las opciones de apoyo.</p>
+                </div>
+                <form onSubmit={handleSponsorshipSubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="sponsor-name" className="block text-xs font-bold text-slate-700 mb-1">Nombre completo *</label>
+                    <input id="sponsor-name" required minLength={2} maxLength={150} value={sponsorshipForm.sponsorName} onChange={(event) => setSponsorshipForm({ ...sponsorshipForm, sponsorName: event.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none" placeholder="Ej. María Morales" />
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="sponsor-phone" className="block text-xs font-bold text-slate-700 mb-1">Teléfono / WhatsApp *</label>
+                      <input id="sponsor-phone" required type="tel" minLength={7} maxLength={30} value={sponsorshipForm.sponsorPhone} onChange={(event) => setSponsorshipForm({ ...sponsorshipForm, sponsorPhone: event.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none" placeholder="5555-1234" />
+                    </div>
+                    <div>
+                      <label htmlFor="sponsor-email" className="block text-xs font-bold text-slate-700 mb-1">Correo (opcional)</label>
+                      <input id="sponsor-email" type="email" maxLength={254} value={sponsorshipForm.sponsorEmail} onChange={(event) => setSponsorshipForm({ ...sponsorshipForm, sponsorEmail: event.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none" placeholder="tu@correo.com" />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="sponsor-message" className="block text-xs font-bold text-slate-700 mb-1">Mensaje (opcional)</label>
+                    <textarea id="sponsor-message" maxLength={500} rows={3} value={sponsorshipForm.message} onChange={(event) => setSponsorshipForm({ ...sponsorshipForm, message: event.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none resize-y" placeholder="Cuéntanos cómo te gustaría apoyar." />
+                  </div>
+                  {sponsorshipError && <p role="alert" className="text-sm text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-xl">{sponsorshipError}</p>}
+                  <button type="submit" disabled={sponsorshipSubmitting} className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-bold py-3.5 rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+                    <Heart className="w-4 h-4" /> {sponsorshipSubmitting ? "Enviando solicitud..." : "Enviar solicitud de apadrinamiento"}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {showTermsModal && selectedDog && (
         <div
           className="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"

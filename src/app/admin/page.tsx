@@ -3,7 +3,7 @@ import { uploadSpecialCaseForm } from "@/lib/special-case-upload-client";
 
 import { useEffect, useState } from "react";
 import type { LocalDog } from "@/lib/local-records";
-import type { AdoptionView, VolunteerView, InventoryView, CaseReportView, TransparencyView, AdminTab, MedicalRecordView } from "@/lib/view-types";
+import type { AdoptionView, VolunteerView, InventoryView, CaseReportView, TransparencyView, AdminTab, MedicalRecordView, SponsorshipView } from "@/lib/view-types";
 import type { AdminNotification } from "@/lib/notifications";
 import type { LucideIcon } from "lucide-react";
 type Appointment = MedicalRecordView & { dogId: string; dogName: string };
@@ -114,6 +114,8 @@ export default function AdminPage() {
   const [selectedApplication, setSelectedApplication] = useState<AdoptionView | null>(null);
   const [downloadingApplicationId, setDownloadingApplicationId] = useState<string | null>(null);
   const [applicationError, setApplicationError] = useState("");
+  const [sponsorshipRequests, setSponsorshipRequests] = useState<SponsorshipView[]>([]);
+  const [sponsorshipError, setSponsorshipError] = useState("");
 
   const [inventory, setInventory] = useState<InventoryView[]>([]);
   const [deletingInventoryId, setDeletingInventoryId] = useState<string | null>(null);
@@ -312,10 +314,11 @@ const [dogEditForm, setDogEditForm] = useState({
   // Cargar datos al montar
   const loadAllData = async () => {
     try {
-      const [dogsRes, deletedDogsRes, appRes, invRes, volRes, caseRes, transRes, notifRes] = await Promise.all([
+      const [dogsRes, deletedDogsRes, appRes, sponsorRes, invRes, volRes, caseRes, transRes, notifRes] = await Promise.all([
         fetch("/api/dogs", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
         fetch("/api/dogs?deletedOnly=true", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
         fetch("/api/applications").then((r) => r.json()).catch(() => null),
+        fetch("/api/sponsorships", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
         fetch("/api/inventory").then((r) => r.json()).catch(() => null),
         fetch("/api/volunteers").then((r) => r.json()).catch(() => null),
         fetch("/api/case-reports").then((r) => r.json()).catch(() => null),
@@ -330,6 +333,12 @@ const [dogEditForm, setDogEditForm] = useState({
       if (Array.isArray(dogsRes)) setDogs(dogsRes);
       if (Array.isArray(deletedDogsRes)) setDeletedDogs(deletedDogsRes);
       if (Array.isArray(appRes)) setApplications(appRes);
+      if (Array.isArray(sponsorRes)) {
+        setSponsorshipRequests(sponsorRes);
+        setSponsorshipError("");
+      } else {
+        setSponsorshipError("No se pudieron cargar las solicitudes de apadrinamiento.");
+      }
       if (Array.isArray(invRes)) setInventory(invRes);
       if (Array.isArray(volRes)) setVolunteers(volRes);
       if (Array.isArray(caseRes)) setCaseReports(caseRes);
@@ -757,6 +766,22 @@ const [dogEditForm, setDogEditForm] = useState({
     }
   };
 
+  const handleUpdateSponsorshipStatus = async (id: string, status: string) => {
+    setSponsorshipError("");
+    try {
+      const response = await fetch("/api/sponsorships", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "No se pudo actualizar la solicitud.");
+      setSponsorshipRequests((previous) => previous.map((request) => request.id === id ? result : request));
+    } catch (error) {
+      setSponsorshipError(error instanceof Error ? error.message : "Error al actualizar la solicitud.");
+    }
+  };
+
   const downloadVolunteerWord = async (id: string, name: string) => {
     if (downloadingVolunteerId) return;
     setVolunteerError("");
@@ -840,6 +865,7 @@ const [dogEditForm, setDogEditForm] = useState({
   // Detectar items de bajo stock y notificaciones sin leer
   const lowStockItems = inventory.filter((item) => item.quantity <= item.minThreshold);
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
+  const pendingSponsorshipsCount = sponsorshipRequests.filter((request) => !["Concretado", "Cerrado"].includes(request.status)).length;
 
   return (
     <div className="min-h-screen bg-slate-100 pb-16">
@@ -915,6 +941,7 @@ const [dogEditForm, setDogEditForm] = useState({
             { id: "case-reports", label: "Reportes de Riesgo", icon: AlertTriangle, count: caseReports.filter(r => r.status !== "Caso Cerrado").length, alert: caseReports.filter(r => r.status === "Recibido" && r.urgency === "Alta (Emergencia)").length },
             { id: "agenda", label: "Agenda Médica", icon: Calendar },
             { id: "applications", label: "Gestión Adoptantes", icon: FileText, count: applications.filter(a => ["Pendiente", "En Evaluación"].includes(a.status)).length },
+            { id: "sponsorships", label: "Apadrinamientos", icon: HeartHandshake, count: pendingSponsorshipsCount, alert: pendingSponsorshipsCount },
             { id: "inventory", label: "Control Inventario", icon: Package, alert: lowStockItems.length },
             { id: "volunteers", label: "Gestión Voluntarios", icon: Users, count: volunteers.filter(v => v.status === "En Evaluación").length },
             { id: "store", label: "Gestión Tienda", icon: ShoppingBag },
@@ -1654,6 +1681,45 @@ const [dogEditForm, setDogEditForm] = useState({
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* 3. PESTAÑA SOLICITUDES DE APADRINAMIENTO */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "sponsorships" && (
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-5">
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900">Solicitudes de Apadrinamiento</h2>
+              <p className="text-xs text-slate-500 mt-1">Contacta a las personas interesadas y actualiza el estado de cada solicitud.</p>
+            </div>
+            {sponsorshipError && <p role="alert" className="text-sm text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-xl">{sponsorshipError}</p>}
+            {sponsorshipRequests.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">Todavía no hay solicitudes de apadrinamiento.</p>
+            ) : (
+              <div className="space-y-3">
+                {sponsorshipRequests.map((request) => (
+                  <article key={request.id} className="rounded-2xl border border-slate-200 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="min-w-0 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-extrabold text-slate-900">{request.sponsorName}</h3>
+                        <span className="text-xs font-bold text-fuchsia-800 bg-fuchsia-50 border border-fuchsia-100 px-2.5 py-1 rounded-full">Quiere apadrinar a {request.dog?.name || "Perrito no disponible"}</span>
+                      </div>
+                      <p className="text-sm text-slate-700">Teléfono: <a className="font-semibold text-sky-700 hover:underline" href={`tel:${request.sponsorPhone.replace(/[^+\d]/g, "")}`}>{request.sponsorPhone}</a></p>
+                      {request.sponsorEmail && <p className="text-sm text-slate-700">Correo: <a className="font-semibold text-sky-700 hover:underline" href={`mailto:${request.sponsorEmail}`}>{request.sponsorEmail}</a></p>}
+                      {request.message && <p className="text-sm text-slate-600 whitespace-pre-wrap">Mensaje: {request.message}</p>}
+                      <p className="text-xs text-slate-400">Recibida {new Date(request.createdAt).toLocaleString("es-GT", { dateStyle: "medium", timeStyle: "short" })}</p>
+                    </div>
+                    <label className="text-xs font-bold text-slate-600 flex flex-col gap-1.5 shrink-0">
+                      Estado de solicitud
+                      <select disabled={isReadOnly} value={request.status} onChange={(event) => handleUpdateSponsorshipStatus(request.id, event.target.value)} className="min-w-48 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 disabled:bg-slate-100">
+                        {["Pendiente", "Contactado", "En seguimiento", "Concretado", "Cerrado"].map((status) => <option key={status} value={status}>{status}</option>)}
+                      </select>
+                    </label>
+                  </article>
+                ))}
               </div>
             )}
           </div>

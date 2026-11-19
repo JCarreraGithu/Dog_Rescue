@@ -14,6 +14,7 @@ const PUBLIC_API: Record<string, string[]> = {
   "/api/donation-needs": ["GET"], // proyección pública de necesidades, sin inventario interno
   "/api/orders": ["POST"], // registro público de pedidos de la tienda
   "/api/applications": ["POST"], // formulario de adopción
+  "/api/sponsorships": ["POST"], // solicitud pública de apadrinamiento
   "/api/volunteers": ["POST"], // formulario de voluntariado
   "/api/case-reports": ["POST"], // reporte de perrito en riesgo
   "/api/case-reports/upload": ["POST"], // subida pública de fotos para reporte de perrito en riesgo

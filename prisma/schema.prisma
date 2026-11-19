@@ -35,6 +35,7 @@ model Dog {
 
   medicalRecords   MedicalRecord[]
   applications     AdoptionApplication[]
+  sponsorshipRequests SponsorshipRequest[]
 }
 
 
@@ -86,6 +87,22 @@ model AdoptionApplication {
   homeType          String   @default("Casa")
   hasYard           Boolean  @default(false)
   hasOtherPets      Boolean  @default(false)
+}
+
+model SponsorshipRequest {
+  id           String   @id @default(uuid())
+  dogId        String?
+  dog          Dog?     @relation(fields: [dogId], references: [id], onDelete: SetNull)
+  dogSnapshot  Json?
+  sponsorName  String
+  sponsorPhone String
+  sponsorEmail String   @default("")
+  message      String   @default("")
+  status       String   @default("Pendiente")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([createdAt, id])
 }
 
 

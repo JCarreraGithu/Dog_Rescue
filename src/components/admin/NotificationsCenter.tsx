@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Bell,
   Heart,
+  HeartHandshake,
   ShoppingBag,
   Users,
   AlertTriangle,
@@ -36,6 +37,7 @@ export default function NotificationsCenter({
   const adoptionCount = notifications.filter(
     (n) => n.type === "adoption"
   ).length;
+  const sponsorshipCount = notifications.filter((n) => n.type === "sponsorship").length;
   const orderCount = notifications.filter((n) => n.type === "order").length;
   const volunteerCount = notifications.filter(
     (n) => n.type === "volunteer" || n.type === "case_report"
@@ -78,6 +80,14 @@ export default function NotificationsCenter({
           badge: "bg-rose-100 text-rose-800 border-rose-200",
           iconBg: "bg-rose-500 text-white",
           buttonLabel: "Ver en Gestión Adoptantes",
+        };
+      case "sponsorship":
+        return {
+          label: "Solicitud de Apadrinamiento",
+          icon: HeartHandshake,
+          badge: "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200",
+          iconBg: "bg-fuchsia-600 text-white",
+          buttonLabel: "Ver en Apadrinamientos",
         };
       case "order":
         return {
@@ -129,7 +139,7 @@ export default function NotificationsCenter({
               Centro de Notificaciones (Adopciones, Compras y Solicitudes)
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Aquí se registra automáticamente cada postulación de adopción, compra en la tienda solidaria, solicitud de voluntariado y reporte ciudadano.
+              Aquí se registra automáticamente cada postulación de adopción, solicitud de apadrinamiento, compra en la tienda solidaria, solicitud de voluntariado y reporte ciudadano.
             </p>
           </div>
 
@@ -160,7 +170,7 @@ export default function NotificationsCenter({
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80">
             <p className="text-xs font-bold text-emerald-800 uppercase">
               Nuevas sin leer
@@ -171,6 +181,12 @@ export default function NotificationsCenter({
             <p className="text-[11px] text-emerald-700 mt-0.5">
               Alertas pendientes de revisión
             </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-fuchsia-50/70 border border-fuchsia-200/80">
+            <p className="text-xs font-bold text-fuchsia-800 uppercase">Apadrinamientos</p>
+            <p className="text-3xl font-black text-fuchsia-900 mt-1">{sponsorshipCount}</p>
+            <p className="text-[11px] text-fuchsia-700 mt-0.5">Interés en apoyar a un perrito</p>
           </div>
 
           <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-200/80">
@@ -215,6 +231,7 @@ export default function NotificationsCenter({
           {[
             { id: "all", label: `Todas (${notifications.length})` },
             { id: "adoption", label: `Adopciones (${adoptionCount})` },
+            { id: "sponsorship", label: `Apadrinamientos (${sponsorshipCount})` },
             { id: "order", label: `Compras Tienda (${orderCount})` },
             {
               id: "volunteer",
@@ -256,7 +273,7 @@ export default function NotificationsCenter({
             No hay notificaciones en esta categoría todavía
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            En cuanto un visitante envíe una solicitud de adopción en /catalogo o confirme una compra en /tienda, aparecerá aquí al instante.
+            En cuanto un visitante envíe una solicitud de adopción o apadrinamiento en /catalogo, confirme una compra en /tienda, se postule como voluntario o envíe un reporte, aparecerá aquí.
           </p>
         </div>
       ) : (

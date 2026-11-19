@@ -1,5 +1,5 @@
-export const NOTIFICATION_TYPES = ["adoption", "order", "volunteer", "case_report", "system"] as const;
-export const NOTIFICATION_TARGETS = ["applications", "store", "volunteers", "dogs", "case-reports", "notifications"] as const;
+export const NOTIFICATION_TYPES = ["adoption", "sponsorship", "order", "volunteer", "case_report", "system"] as const;
+export const NOTIFICATION_TARGETS = ["applications", "sponsorships", "store", "volunteers", "dogs", "case-reports", "notifications"] as const;
 export type NotificationType = typeof NOTIFICATION_TYPES[number];
 export type AdminNotification = {
   id: string;

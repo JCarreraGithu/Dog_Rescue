@@ -412,13 +412,22 @@ export default function HomePage() {
                     </p>
                   </div>
 
-                  <Link
-                    href={`/catalogo?dogId=${dog.id}`}
-                    className="w-full inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 text-sm rounded-xl transition"
-                  >
-                    <Heart className="w-4 h-4 fill-white" />
-                    <span>Postular a Adopción</span>
-                  </Link>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Link
+                      href={`/catalogo?dogId=${encodeURIComponent(dog.id)}`}
+                      className="w-full inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-2 py-2.5 text-sm rounded-xl transition"
+                    >
+                      <Heart className="w-4 h-4 fill-white" />
+                      <span>Adoptar</span>
+                    </Link>
+                    <Link
+                      href={`/catalogo?sponsorDogId=${encodeURIComponent(dog.id)}`}
+                      className="w-full inline-flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold px-2 py-2.5 text-sm rounded-xl transition"
+                    >
+                      <Heart className="w-4 h-4" />
+                      <span>Apadrinar</span>
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))

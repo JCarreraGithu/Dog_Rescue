@@ -1,4 +1,4 @@
-import type { Prisma, AdoptionApplication } from "@prisma/client";
+import type { Prisma, AdoptionApplication, SponsorshipRequest } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { StoreOrder } from "@/lib/local-records";
 import { IntakeError } from "@/lib/intake-validation";
@@ -23,6 +23,19 @@ export async function getVolunteer(id: string) {
   const row = await prisma.volunteer.findUnique({ where: { id } });
   return row ? { ...row, createdAt: row.createdAt.toISOString() } : null;
 }
+const sponsorshipInclude = { dog: { select: { id: true, name: true, photoUrl: true } } } as const;
+export function sponsorshipView(row: SponsorshipRequest & { dog?: { id: string; name: string; photoUrl: string } | null }) {
+  const rawSnapshot = row.dogSnapshot && typeof row.dogSnapshot === "object" && !Array.isArray(row.dogSnapshot) ? row.dogSnapshot : null;
+  const snapshot = rawSnapshot && typeof rawSnapshot.id === "string" && typeof rawSnapshot.name === "string" && typeof rawSnapshot.photoUrl === "string"
+    ? { id: rawSnapshot.id, name: rawSnapshot.name, photoUrl: rawSnapshot.photoUrl }
+    : null;
+  const { dogSnapshot: _dogSnapshot, ...request } = row;
+  return { ...request, dog: row.dog ?? snapshot, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
+}
+export async function getSponsorshipRequests() {
+  return (await prisma.sponsorshipRequest.findMany({ include: sponsorshipInclude, orderBy: [{ createdAt: "desc" }, { id: "desc" }] })).map(sponsorshipView);
+}
+export const sponsorshipRequestInclude = sponsorshipInclude;
 export async function getReports(client: Pick<Prisma.TransactionClient, 'caseReport'> = prisma) {
   return (await client.caseReport.findMany({ orderBy: { createdAt: 'desc' } })).map(row => ({ ...row, photos: row.photos.length ? row.photos : row.photoUrl ? [row.photoUrl] : [], createdAt: row.createdAt.toISOString() }));
 }
