@@ -70,6 +70,14 @@ export async function PUT(request: Request) {
     const denied = await checkContentAccess(request, "/api/sponsorships");
     if (denied) return denied;
     const data = await body(request);
+    if (data.action === "endDogSponsorship") {
+      const dogId = id(data.dogId);
+      const result = await prisma.sponsorshipRequest.updateMany({
+        where: { dogId, status: "Concretado" },
+        data: { status: "Cerrado" },
+      });
+      return NextResponse.json({ dogId, closedCount: result.count }, { headers });
+    }
     const requestId = id(data.id);
     const status = choice(data.status, SPONSORSHIP_STATUSES);
     const row = await prisma.sponsorshipRequest.update({ where: { id: requestId }, data: { status }, include: sponsorshipRequestInclude });

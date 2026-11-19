@@ -112,6 +112,8 @@ export default function AdminPage() {
   const [applicationError, setApplicationError] = useState("");
   const [sponsorshipRequests, setSponsorshipRequests] = useState<SponsorshipView[]>([]);
   const [sponsorshipError, setSponsorshipError] = useState("");
+  const [sponsorshipDogBusyId, setSponsorshipDogBusyId] = useState<string | null>(null);
+  const [sponsorshipDogFeedback, setSponsorshipDogFeedback] = useState<{ dogId: string; message: string; error?: boolean } | null>(null);
 
   const [inventory, setInventory] = useState<InventoryView[]>([]);
   const [deletingInventoryId, setDeletingInventoryId] = useState<string | null>(null);
@@ -780,6 +782,33 @@ const [dogEditForm, setDogEditForm] = useState({
     }
   };
 
+  const handleEndDogSponsorship = async (dogId: string, dogName: string) => {
+    const activeCount = sponsorshipRequests.filter((request) => request.dogId === dogId && request.status === "Concretado").length;
+    if (!activeCount || sponsorshipDogBusyId) return;
+    if (!window.confirm(`¿Quitar la etiqueta de apadrinado de ${dogName}? Se cerrarán ${activeCount} solicitud${activeCount === 1 ? "" : "es"} concretada${activeCount === 1 ? "" : "s"}.`)) return;
+
+    setSponsorshipDogBusyId(dogId);
+    setSponsorshipDogFeedback(null);
+    try {
+      const response = await fetch("/api/sponsorships", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "endDogSponsorship", dogId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "No se pudo quitar la etiqueta de apadrinado.");
+      setSponsorshipRequests((previous) => previous.map((request) => request.dogId === dogId && request.status === "Concretado" ? { ...request, status: "Cerrado" } : request));
+      setSponsorshipDogFeedback({
+        dogId,
+        message: result.closedCount > 0 ? `Se quitó la etiqueta de apadrinado de ${dogName}.` : `${dogName} ya no tenía solicitudes concretadas.`,
+      });
+    } catch (error) {
+      setSponsorshipDogFeedback({ dogId, message: error instanceof Error ? error.message : "No se pudo quitar la etiqueta de apadrinado.", error: true });
+    } finally {
+      setSponsorshipDogBusyId(null);
+    }
+  };
+
   const downloadVolunteerWord = async (id: string, name: string) => {
     if (downloadingVolunteerId) return;
     setVolunteerError("");
@@ -1219,6 +1248,40 @@ const [dogEditForm, setDogEditForm] = useState({
                           <p className="text-xs text-slate-600 mt-2 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
                             {dog.healthNotes || "Sin notas de salud registradas."}
                           </p>
+
+                          {(() => {
+                            const activeSponsorshipCount = sponsorshipRequests.filter((request) => request.dogId === dog.id && request.status === "Concretado").length;
+                            if (!activeSponsorshipCount && sponsorshipDogFeedback?.dogId !== dog.id) return null;
+                            return (
+                              <div className="mt-3 p-3 rounded-xl bg-fuchsia-50 border border-fuchsia-200 space-y-2">
+                                {activeSponsorshipCount > 0 && (
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div>
+                                      <span className="inline-flex items-center gap-1.5 text-xs font-black text-fuchsia-900">
+                                        <HeartHandshake className="w-3.5 h-3.5" /> Apadrinado
+                                      </span>
+                                      <p className="text-[11px] text-fuchsia-800 mt-0.5">
+                                        {activeSponsorshipCount} solicitud{activeSponsorshipCount === 1 ? "" : "es"} concretada{activeSponsorshipCount === 1 ? "" : "s"}
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      disabled={isReadOnly || sponsorshipDogBusyId !== null}
+                                      onClick={() => handleEndDogSponsorship(dog.id, dog.name)}
+                                      className="shrink-0 px-3 py-2 rounded-lg bg-white hover:bg-fuchsia-100 border border-fuchsia-300 text-fuchsia-900 text-[11px] font-extrabold disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {sponsorshipDogBusyId === dog.id ? "Actualizando..." : "Quitar etiqueta"}
+                                    </button>
+                                  </div>
+                                )}
+                                {sponsorshipDogFeedback?.dogId === dog.id && (
+                                  <p role={sponsorshipDogFeedback.error ? "alert" : "status"} className={`text-xs font-semibold ${sponsorshipDogFeedback.error ? "text-rose-700" : "text-emerald-800"}`}>
+                                    {sponsorshipDogFeedback.message}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Indicador de las 3 Etapas Documentales */}
                           {(() => {
