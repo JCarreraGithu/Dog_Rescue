@@ -18,7 +18,14 @@ export async function GET(request: Request) {
       const temperament = query.get("temperament"); if (temperament && temperament !== "Todos") where.temperament = { contains: temperament, mode: "insensitive" };
     }
     const rows = await prisma.dog.findMany({ where, ...(staff ? { include: dogRelations } : {}), orderBy: { createdAt: "desc" } });
-    return NextResponse.json(rows.map(row => dogView(row, Boolean(staff))), { headers });
+    const sponsoredRequests = rows.length
+      ? await prisma.sponsorshipRequest.findMany({
+          where: { dogId: { in: rows.map(row => row.id) }, status: "Concretado" },
+          select: { dogId: true },
+        })
+      : [];
+    const sponsoredDogIds = new Set(sponsoredRequests.map(request => request.dogId));
+    return NextResponse.json(rows.map(row => ({ ...dogView(row, Boolean(staff)), isSponsored: sponsoredDogIds.has(row.id) })), { headers });
   } catch (error) { return intakeFailure(error); }
 }
 export async function POST(request: Request) {

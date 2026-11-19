@@ -14,6 +14,7 @@ export type DemoDog = {
   healthNotes: string;
   photoUrl: string;
   isSterilized: boolean;
+  isSponsored?: boolean;
   medicalRecords: MedicalRecordView[];
   applications?: AdoptionView[];
 };

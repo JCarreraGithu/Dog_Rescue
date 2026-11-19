@@ -395,6 +395,11 @@ export default function HomePage() {
                   <span className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-xs font-semibold px-2.5 py-1 rounded-lg">
                     {dog.size}
                   </span>
+                  {dog.isSponsored && (
+                    <span className="absolute top-3 right-3 inline-flex items-center gap-1 bg-rose-600/95 text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm">
+                      <Heart className="w-3.5 h-3.5 fill-white" /> Apadrinado
+                    </span>
+                  )}
                 </div>
                 <div className="p-5 flex-grow flex flex-col justify-between space-y-3">
                   <div>

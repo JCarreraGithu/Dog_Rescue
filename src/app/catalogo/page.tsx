@@ -457,6 +457,11 @@ function CatalogoContent() {
                     <span className="bg-slate-900/85 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-xl shadow-xs">
                       {dog.size}
                     </span>
+                    {dog.isSponsored && (
+                      <span className="bg-rose-600/95 backdrop-blur-md text-white text-xs font-bold px-2.5 py-1 rounded-xl shadow-xs inline-flex items-center gap-1">
+                        <Heart className="w-3.5 h-3.5 fill-white" /> Apadrinado
+                      </span>
+                    )}
                     {dog.isSterilized && (
                       <span className="bg-emerald-600/95 backdrop-blur-md text-white text-xs font-bold px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1">
                         <ShieldCheck className="w-3.5 h-3.5" /> Esterilizado
