@@ -13,6 +13,7 @@ export type DemoDog = {
   rescueHistory: string;
   healthNotes: string;
   photoUrl: string;
+  galleryPhotos?: string[];
   isSterilized: boolean;
   isSponsored?: boolean;
   medicalRecords: MedicalRecordView[];

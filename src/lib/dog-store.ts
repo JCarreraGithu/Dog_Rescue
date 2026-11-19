@@ -8,6 +8,10 @@ export function dogInput(input: unknown, create = false) {
   const source = object(input), data: Prisma.DogUncheckedUpdateManyInput = {};
   for (const key of ["name", "breed", "ageCategory", "gender", "size", "temperament", "status", "rescueHistory", "healthNotes"] as const) if (source[key] !== undefined) data[key] = stringField(source[key], ["name", "ageCategory", "size", "gender", "status"].includes(key));
   if (source.photoUrl !== undefined) { data.photoUrl = imageUrl(source.photoUrl); if (!data.photoUrl) throw new IntakeError("La fotografía es obligatoria."); }
+  if (source.galleryPhotos !== undefined) {
+    if (!Array.isArray(source.galleryPhotos) || source.galleryPhotos.length > 3) throw new IntakeError("Cada perrito puede tener hasta cuatro fotos contando la foto principal.");
+    data.galleryPhotos = source.galleryPhotos.map(imageUrl).filter(Boolean);
+  }
   if (source.ageYears !== undefined) data.ageYears = numberField(source.ageYears);
   if (source.isSterilized !== undefined) data.isSterilized = booleanField(source.isSterilized);
   if (source.rescueDate !== undefined) data.rescueDate = dateField(source.rescueDate);
@@ -23,7 +27,7 @@ export function dogView(row: Dog, staff = false) {
   const { documentation: _documentation, ...visible } = row;
   void _documentation;
   if (staff) return visible;
-  return { id: row.id, name: row.name, breed: row.breed, ageCategory: row.ageCategory, ageYears: row.ageYears, gender: row.gender, size: row.size, temperament: row.temperament, status: row.status, rescueHistory: row.rescueHistory, healthNotes: row.healthNotes, photoUrl: row.photoUrl, isSterilized: row.isSterilized, medicalRecords: [] };
+  return { id: row.id, name: row.name, breed: row.breed, ageCategory: row.ageCategory, ageYears: row.ageYears, gender: row.gender, size: row.size, temperament: row.temperament, status: row.status, rescueHistory: row.rescueHistory, healthNotes: row.healthNotes, photoUrl: row.photoUrl, galleryPhotos: row.galleryPhotos, isSterilized: row.isSterilized, medicalRecords: [] };
 }
 export function emptyDocumentation(dog: Dog): DogDocumentation {
   return buildDefaultDogDocumentation({ ...dog, documentation: undefined, createdAt: dog.createdAt.toISOString(), deletedAt: dog.deletedAt?.toISOString(), medicalRecords: [] });

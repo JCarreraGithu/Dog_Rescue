@@ -81,6 +81,7 @@ function CatalogoContent() {
   // Modal de Detalle / Postulación
   const [selectedDog, setSelectedDog] = useState<DemoDog | null>(null);
   const [showExpandedDogPhoto, setShowExpandedDogPhoto] = useState(false);
+  const [selectedDogPhotoIndex, setSelectedDogPhotoIndex] = useState(0);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [acceptedTermsDocument, setAcceptedTermsDocument] = useState<boolean>(false);
 
@@ -124,7 +125,10 @@ function CatalogoContent() {
         setDogs(data);
         if (initialDogId && !selectedDog) {
           const found = data.find((d: DemoDog) => d.id === initialDogId);
-          if (found) setSelectedDog(found);
+          if (found) {
+            setSelectedDog(found);
+            setSelectedDogPhotoIndex(0);
+          }
         }
       } else {
         // Un catálogo vacío se conserva vacío.
@@ -146,7 +150,10 @@ function CatalogoContent() {
   useEffect(() => {
     if (initialDogId && !selectedDog) {
       const found = dogs.find((d) => d.id === initialDogId);
-      if (found) setSelectedDog(found);
+      if (found) {
+        setSelectedDog(found);
+        setSelectedDogPhotoIndex(0);
+      }
     }
   }, [initialDogId, dogs]);
 
@@ -272,6 +279,11 @@ function CatalogoContent() {
 
   const hasActiveFilters =
     ageFilter !== "Todos" || sizeFilter !== "Todos" || temperamentFilter !== "Todos" || searchTerm.trim() !== "";
+
+  const selectedDogPhotos = selectedDog
+    ? Array.from(new Set([selectedDog.photoUrl, ...(selectedDog.galleryPhotos || [])].filter(Boolean))).slice(0, 4)
+    : [];
+  const selectedDogPhoto = selectedDogPhotos[selectedDogPhotoIndex] || selectedDog?.photoUrl || "";
 
   return (
     <div className="bg-slate-50/50 min-h-screen pb-24">
@@ -529,6 +541,7 @@ function CatalogoContent() {
                       type="button"
                       onClick={() => {
                         setSelectedDog(dog);
+                        setSelectedDogPhotoIndex(0);
                         setAppSubmitted(false);
                         setSubmitError("");
                         setAcceptedTermsDocument(false);
@@ -576,12 +589,18 @@ function CatalogoContent() {
 
             {/* Encabezado del perrito */}
             <div className="flex flex-col sm:flex-row gap-6 items-start">
-              <div className="relative w-full sm:w-44 h-48 sm:h-44 rounded-2xl overflow-hidden bg-slate-100 shrink-0 shadow-md">
+              <div className="w-full sm:w-56 shrink-0">
+                <div className="relative h-56 rounded-2xl overflow-hidden bg-slate-100 shadow-md">
                 <img
-                  src={selectedDog.photoUrl}
-                  alt={selectedDog.name}
+                  src={selectedDogPhoto}
+                  alt={`${selectedDog.name}, foto ${selectedDogPhotoIndex + 1}`}
                   className="w-full h-full object-cover"
                 />
+                {selectedDogPhotos.length > 1 && (
+                  <span className="absolute top-2 left-2 rounded-lg bg-slate-950/80 text-white text-xs font-bold px-2.5 py-1">
+                    {selectedDogPhotoIndex + 1} / {selectedDogPhotos.length}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => setShowExpandedDogPhoto(true)}
@@ -590,6 +609,23 @@ function CatalogoContent() {
                 >
                   <Expand className="w-4 h-4" /> Ampliar foto
                 </button>
+              </div>
+                {selectedDogPhotos.length > 1 && (
+                  <div className="flex gap-2 mt-2 overflow-x-auto pb-1" aria-label={`Fotos de ${selectedDog.name}`}>
+                    {selectedDogPhotos.map((photo, index) => (
+                      <button
+                        key={`${photo}-${index}`}
+                        type="button"
+                        onClick={() => setSelectedDogPhotoIndex(index)}
+                        aria-label={`Ver foto ${index + 1} de ${selectedDog.name}`}
+                        aria-pressed={selectedDogPhotoIndex === index}
+                        className={`shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition ${selectedDogPhotoIndex === index ? "border-rose-600" : "border-slate-200 hover:border-slate-400"}`}
+                      >
+                        <img src={photo} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 flex-1">
@@ -885,8 +921,8 @@ function CatalogoContent() {
               <X className="w-5 h-5" /> Cerrar
             </button>
             <img
-              src={selectedDog.photoUrl}
-              alt={`Foto ampliada de ${selectedDog.name}`}
+              src={selectedDogPhoto}
+              alt={`Foto ampliada ${selectedDogPhotoIndex + 1} de ${selectedDog.name}`}
               className="max-h-[88vh] max-w-[95vw] w-auto h-auto object-contain rounded-xl shadow-2xl"
             />
             <p className="text-white text-sm font-bold">{selectedDog.name}</p>

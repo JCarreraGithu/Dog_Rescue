@@ -1,6 +1,4 @@
 "use client";
-import { uploadSpecialCaseForm } from "@/lib/special-case-upload-client";
-
 import { useEffect, useState } from "react";
 import type { LocalDog } from "@/lib/local-records";
 import type { AdoptionView, VolunteerView, InventoryView, CaseReportView, TransparencyView, AdminTab, MedicalRecordView, SponsorshipView } from "@/lib/view-types";
@@ -36,7 +34,6 @@ import {
   HeartHandshake,
   Bell,
   RotateCcw,
-  Upload,
   FolderOpen,
   Sparkles,
   KeyRound,
@@ -98,7 +95,6 @@ export default function AdminPage() {
   const [dogsSubView, setDogsSubView] = useState<"activos" | "documentacion" | "papelera">("activos");
   const [documentationDog, setDocumentationDog] = useState<{ id: string; name: string } | null>(null);
   const [editingFullDog, setEditingFullDog] = useState<LocalDog | null>(null);
-  const [uploadingDogPhoto, setUploadingDogPhoto] = useState(false);
   const [busyDogId, setBusyDogId] = useState<string | null>(null);
   const [dogActionFeedback, setDogActionFeedback] = useState<{
     type: "deleted" | "restored" | "saved";
@@ -145,6 +141,7 @@ const [dogEditForm, setDogEditForm] = useState({
   temperament: "Sociable",
   status: "En Adopción",
   photoUrl: "",
+  galleryPhotos: [] as string[],
   isSterilized: false,
   rescueHistory: "",
   healthNotes: "",
@@ -165,6 +162,7 @@ const [dogEditForm, setDogEditForm] = useState({
     rescueHistory: "",
     healthNotes: "",
     photoUrl: "",
+    galleryPhotos: [] as string[],
     isSterilized: false,
   });
 
@@ -384,30 +382,28 @@ const [dogEditForm, setDogEditForm] = useState({
     loadAllData();
   }, []);
 
-  // Subir fotografía desde dispositivo para nuevo perro o edición
-  const handleDogPhotoUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    target: "create" | "edit"
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingDogPhoto(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await uploadSpecialCaseForm(formData, "/api/dogs/upload", false);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo subir la imagen.");
-      if (target === "create") {
-        setDogForm((prev) => ({ ...prev, photoUrl: data.url }));
-      } else {
-        setDogEditForm((prev) => ({ ...prev, photoUrl: data.url }));
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Error al subir la fotografía.");
-    } finally {
-      setUploadingDogPhoto(false);
-      e.target.value = "";
+  const addDogGalleryUrl = (target: "create" | "edit") => {
+    if (target === "create") {
+      setDogForm((previous) => previous.galleryPhotos.length < 3 ? { ...previous, galleryPhotos: [...previous.galleryPhotos, ""] } : previous);
+    } else {
+      setDogEditForm((previous) => previous.galleryPhotos.length < 3 ? { ...previous, galleryPhotos: [...previous.galleryPhotos, ""] } : previous);
+    }
+  };
+
+  const updateDogGalleryUrl = (target: "create" | "edit", index: number, url: string) => {
+    const update = (previous: typeof dogForm) => ({ ...previous, galleryPhotos: previous.galleryPhotos.map((photo, photoIndex) => photoIndex === index ? url : photo) });
+    if (target === "create") {
+      setDogForm(update);
+    } else {
+      setDogEditForm((previous) => ({ ...previous, galleryPhotos: previous.galleryPhotos.map((photo, photoIndex) => photoIndex === index ? url : photo) }));
+    }
+  };
+
+  const removeDogGalleryPhoto = (target: "create" | "edit", index: number) => {
+    if (target === "create") {
+      setDogForm((previous) => ({ ...previous, galleryPhotos: previous.galleryPhotos.filter((_, photoIndex) => photoIndex !== index) }));
+    } else {
+      setDogEditForm((previous) => ({ ...previous, galleryPhotos: previous.galleryPhotos.filter((_, photoIndex) => photoIndex !== index) }));
     }
   };
 
@@ -424,6 +420,7 @@ const [dogEditForm, setDogEditForm] = useState({
       temperament: dog.temperament || "Sociable",
       status: dog.status || "En Adopción",
       photoUrl: dog.photoUrl || "",
+      galleryPhotos: dog.galleryPhotos || [],
       isSterilized: Boolean(dog.isSterilized),
       rescueHistory: dog.rescueHistory || "",
       healthNotes: dog.healthNotes || "",
@@ -453,6 +450,7 @@ const [dogEditForm, setDogEditForm] = useState({
           rescueHistory: "",
           healthNotes: "",
           photoUrl: "",
+          galleryPhotos: [],
           isSterilized: false,
         });
         loadAllData();
@@ -2466,42 +2464,42 @@ const [dogEditForm, setDogEditForm] = useState({
                 </div>
               </div>
 
-              {/* Fotografía (Subir archivo o URL) */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <label className="font-bold text-slate-800">Fotografía del Perrito</label>
-                  <label className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer transition">
-                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{uploadingDogPhoto ? "Subiendo..." : "Subir foto desde mi equipo"}</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/avif"
-                      onChange={(e) => handleDogPhotoUpload(e, "edit")}
-                      disabled={uploadingDogPhoto}
-                      className="hidden"
-                    />
-                  </label>
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">Foto principal (URL) *</label>
+                  <p className="text-[11px] text-slate-500 mb-2">Pega una URL de imagen alojada fuera de Neon. En Neon solo guardamos la dirección.</p>
+                  <input
+                    type="text"
+                    required
+                    placeholder="https://..."
+                    value={dogEditForm.photoUrl}
+                    onChange={(e) => setDogEditForm({ ...dogEditForm, photoUrl: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900"
+                  />
+                  {dogEditForm.photoUrl.trim() && <img src={dogEditForm.photoUrl} alt="Vista previa de foto principal" className="mt-2 w-20 h-20 object-cover rounded-xl border border-slate-300" />}
                 </div>
-                <input
-                  type="text"
-                  required
-                  placeholder="URL de la foto o sube una imagen arriba..."
-                  value={dogEditForm.photoUrl}
-                  onChange={(e) => setDogEditForm({ ...dogEditForm, photoUrl: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900"
-                />
-                {dogEditForm.photoUrl && (
-                  <div className="flex items-center gap-3 pt-1">
-                    <img
-                      src={dogEditForm.photoUrl}
-                      alt="Vista previa"
-                      className="w-20 h-20 object-cover rounded-xl border border-slate-300"
-                    />
-                    <span className="text-[11px] text-slate-500">
-                      Vista previa actual de la fotografía del expediente.
-                    </span>
+                <div className="border-t border-slate-200 pt-3 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-slate-800">Fotos adicionales (URLs)</p>
+                      <p className="text-[11px] text-slate-500">{dogEditForm.galleryPhotos.filter((photo) => photo.trim()).length} de 3 URLs; máximo 4 fotos contando la principal.</p>
+                    </div>
+                    <button type="button" onClick={() => addDogGalleryUrl("edit")} disabled={dogEditForm.galleryPhotos.length >= 3} className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition">
+                      <Plus className="w-3.5 h-3.5" /> Agregar URL
+                    </button>
                   </div>
-                )}
+                  {dogEditForm.galleryPhotos.map((photo, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex gap-2">
+                        <input type="text" value={photo} onChange={(event) => updateDogGalleryUrl("edit", index, event.target.value)} aria-label={`URL de foto adicional ${index + 1}`} placeholder="https://..." className="min-w-0 flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900" />
+                        <button type="button" onClick={() => removeDogGalleryPhoto("edit", index)} aria-label={`Quitar URL de foto adicional ${index + 1}`} className="shrink-0 p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      {photo.trim() && <img src={photo} alt={`Vista previa de foto adicional ${index + 1}`} className="w-16 h-16 object-cover rounded-lg border border-slate-300" />}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -2720,43 +2718,43 @@ const [dogEditForm, setDogEditForm] = useState({
                 </div>
               </div>
 
-              {/* Fotografía (subida local o URL) */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <label htmlFor="new-dog-photo" className="block font-bold text-slate-800">
-                    Fotografía del Perrito
-                  </label>
-                  <label className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer transition">
-                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{uploadingDogPhoto ? "Subiendo..." : "Subir foto desde mi equipo"}</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/avif"
-                      onChange={(e) => handleDogPhotoUpload(e, "create")}
-                      disabled={uploadingDogPhoto}
-                      className="hidden"
-                    />
-                  </label>
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div>
+                  <label htmlFor="new-dog-photo" className="block font-bold text-slate-800 mb-1">Foto principal (URL) *</label>
+                  <p className="text-[11px] text-slate-500 mb-2">Pega una URL de imagen alojada fuera de Neon. En Neon solo guardamos la dirección.</p>
+                  <input
+                    id="new-dog-photo"
+                    type="text"
+                    required
+                    placeholder="https://..."
+                    value={dogForm.photoUrl}
+                    onChange={(e) => setDogForm({ ...dogForm, photoUrl: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900"
+                  />
+                  {dogForm.photoUrl.trim() && <img src={dogForm.photoUrl.trim()} alt="Vista previa de la foto principal" className="mt-2 w-20 h-20 object-cover rounded-xl border border-slate-200" />}
                 </div>
-                <input
-                  id="new-dog-photo"
-                  type="text"
-                  required
-                  placeholder="Sube una imagen arriba o pega una URL..."
-                  value={dogForm.photoUrl}
-                  onChange={(e) => setDogForm({ ...dogForm, photoUrl: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900"
-                />
-                {dogForm.photoUrl.trim() && (
-                  <div className="flex items-center gap-3 pt-1">
-                    <img
-                      src={dogForm.photoUrl.trim()}
-                      alt="Vista previa del nuevo perrito"
-                      className="w-20 h-20 object-cover rounded-xl border border-slate-200"
-                    />
-                    <span className="text-[11px] text-slate-500">Vista previa de la foto</span>
+                <div className="border-t border-slate-200 pt-3 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-slate-800">Fotos adicionales (URLs)</p>
+                      <p className="text-[11px] text-slate-500">{dogForm.galleryPhotos.filter((photo) => photo.trim()).length} de 3 URLs; máximo 4 fotos contando la principal.</p>
+                    </div>
+                    <button type="button" onClick={() => addDogGalleryUrl("create")} disabled={dogForm.galleryPhotos.length >= 3} className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition">
+                      <Plus className="w-3.5 h-3.5" /> Agregar URL
+                    </button>
                   </div>
-                )}
+                  {dogForm.galleryPhotos.map((photo, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex gap-2">
+                        <input type="text" value={photo} onChange={(event) => updateDogGalleryUrl("create", index, event.target.value)} aria-label={`URL de foto adicional ${index + 1}`} placeholder="https://..." className="min-w-0 flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900" />
+                        <button type="button" onClick={() => removeDogGalleryPhoto("create", index)} aria-label={`Quitar URL de foto adicional ${index + 1}`} className="shrink-0 p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      {photo.trim() && <img src={photo} alt={`Vista previa de foto adicional ${index + 1}`} className="w-16 h-16 object-cover rounded-lg border border-slate-300" />}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div>
