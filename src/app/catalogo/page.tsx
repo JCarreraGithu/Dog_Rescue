@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -26,6 +26,7 @@ import {
   ChevronDown,
   ChevronUp,
   BookOpen,
+  Expand,
 } from "lucide-react";
 import type { DemoDog } from "@/data/default-dogs";
 import { SITE } from "@/config/site";
@@ -63,6 +64,7 @@ const SIZE_OPTIONS = ["Todos", "Pequeño", "Mediano", "Grande"] as const;
 const TEMPERAMENT_OPTIONS = ["Todos", "Sociable", "Juguetón", "Tranquilo", "Cariñoso", "Protector"] as const;
 
 function CatalogoContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialDogId = searchParams.get("dogId");
   const initialSponsorDogId = searchParams.get("sponsorDogId");
@@ -78,6 +80,7 @@ function CatalogoContent() {
 
   // Modal de Detalle / Postulación
   const [selectedDog, setSelectedDog] = useState<DemoDog | null>(null);
+  const [showExpandedDogPhoto, setShowExpandedDogPhoto] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [acceptedTermsDocument, setAcceptedTermsDocument] = useState<boolean>(false);
 
@@ -148,11 +151,20 @@ function CatalogoContent() {
   }, [initialDogId, dogs]);
 
   useEffect(() => {
-    if (initialSponsorDogId && !sponsorshipDog) {
-      const found = dogs.find((d) => d.id === initialSponsorDogId);
-      if (found) setSponsorshipDog(found);
+    if (!initialSponsorDogId) {
+      setSponsorshipDog(null);
+      return;
     }
-  }, [initialSponsorDogId, dogs, sponsorshipDog]);
+    if (initialSponsorDogId) {
+      const found = dogs.find((d) => d.id === initialSponsorDogId);
+      if (found) {
+        setSponsorshipDog(found);
+        setSponsorshipForm({ sponsorName: "", sponsorPhone: "", sponsorEmail: "", message: "" });
+        setSponsorshipSubmitted(false);
+        setSponsorshipError("");
+      }
+    }
+  }, [initialSponsorDogId, dogs]);
 
   // Filtro adicional por término de búsqueda (nombre / raza)
   const filteredDogs = useMemo(() => {
@@ -240,6 +252,15 @@ function CatalogoContent() {
     } finally {
       setSponsorshipSubmitting(false);
     }
+  };
+
+  const closeSponsorshipModal = () => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("sponsorDogId");
+    const nextQuery = nextParams.toString();
+    const nextUrl = nextQuery ? `/catalogo?${nextQuery}` : "/catalogo";
+    router.replace(nextUrl, { scroll: false });
+    setSponsorshipDog(null);
   };
 
   const resetFilters = () => {
@@ -521,10 +542,10 @@ function CatalogoContent() {
                     <button
                       type="button"
                       onClick={() => {
-                        setSponsorshipDog(dog);
                         setSponsorshipForm({ sponsorName: "", sponsorPhone: "", sponsorEmail: "", message: "" });
                         setSponsorshipSubmitted(false);
                         setSponsorshipError("");
+                        router.push(`/catalogo?sponsorDogId=${encodeURIComponent(dog.id)}`, { scroll: false });
                       }}
                       className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-sm font-bold py-3.5 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer hover:-translate-y-0.5"
                     >
@@ -561,6 +582,14 @@ function CatalogoContent() {
                   alt={selectedDog.name}
                   className="w-full h-full object-cover"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowExpandedDogPhoto(true)}
+                  aria-label={`Ampliar foto de ${selectedDog.name}`}
+                  className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 rounded-xl bg-slate-950/85 hover:bg-slate-950 text-white text-xs font-bold px-3 py-2 shadow-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                  <Expand className="w-4 h-4" /> Ampliar foto
+                </button>
               </div>
 
               <div className="space-y-2 flex-1">
@@ -835,10 +864,40 @@ function CatalogoContent() {
       )}
 
       {/* 5. MODAL DOCUMENTO OFICIAL DE TÉRMINOS, NORMAS Y COMPROMISO DE ADOPCIÓN */}
+      {showExpandedDogPhoto && selectedDog && (
+        <div
+          className="fixed inset-0 z-[90] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowExpandedDogPhoto(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Foto ampliada de ${selectedDog.name}`}
+            onClick={(event) => event.stopPropagation()}
+            className="relative flex flex-col items-center gap-3 max-w-full max-h-full"
+          >
+            <button
+              type="button"
+              onClick={() => setShowExpandedDogPhoto(false)}
+              aria-label="Cerrar foto ampliada"
+              className="absolute -top-12 right-0 inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold px-3 py-2 transition"
+            >
+              <X className="w-5 h-5" /> Cerrar
+            </button>
+            <img
+              src={selectedDog.photoUrl}
+              alt={`Foto ampliada de ${selectedDog.name}`}
+              className="max-h-[88vh] max-w-[95vw] w-auto h-auto object-contain rounded-xl shadow-2xl"
+            />
+            <p className="text-white text-sm font-bold">{selectedDog.name}</p>
+          </div>
+        </div>
+      )}
+
       {sponsorshipDog && (
-        <div className="fixed inset-0 z-[60] bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSponsorshipDog(null)}>
+        <div className="fixed inset-0 z-[60] bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" onClick={closeSponsorshipModal}>
           <div role="dialog" aria-modal="true" aria-labelledby="sponsorship-title" onClick={(event) => event.stopPropagation()} className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative space-y-5 my-6 border border-slate-200">
-            <button type="button" onClick={() => setSponsorshipDog(null)} aria-label="Cerrar formulario de apadrinamiento" className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition">
+            <button type="button" onClick={closeSponsorshipModal} aria-label="Cerrar formulario de apadrinamiento" className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition">
               <X className="w-5 h-5" />
             </button>
             {sponsorshipSubmitted ? (
@@ -846,7 +905,7 @@ function CatalogoContent() {
                 <CheckCircle2 className="w-14 h-14 text-emerald-600 mx-auto" />
                 <h2 id="sponsorship-title" className="font-black text-2xl text-slate-900">¡Solicitud recibida!</h2>
                 <p className="text-sm text-slate-600">Gracias por querer apadrinar a <strong>{sponsorshipDog.name}</strong>. El equipo del refugio se comunicará contigo para contarte cómo ayudarle.</p>
-                <button type="button" onClick={() => setSponsorshipDog(null)} className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl">Volver al catálogo</button>
+                <button type="button" onClick={closeSponsorshipModal} className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl">Volver al catálogo</button>
               </div>
             ) : (
               <>
